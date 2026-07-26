@@ -629,6 +629,8 @@ class ShimbaAPI:
     def run(self):
         from http.server import HTTPServer, BaseHTTPRequestHandler
         import urllib.parse
+        import mimetypes
+        web_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "index.html")
 
         api = self
 
@@ -656,7 +658,15 @@ class ShimbaAPI:
                 if parsed.path == "/v1/models":
                     self._send(api.list_models())
                 elif parsed.path in ("/", "/health", "/v1"):
-                    self._send({"status": "ok", "model": os.path.basename(api.model_path), "docs": "/v1/models, /v1/completions, /v1/chat/completions"})
+                    if os.path.exists(web_path):
+                        self.send_response(200)
+                        self.send_header("Content-Type", "text/html; charset=utf-8")
+                        self.send_header("Access-Control-Allow-Origin", "*")
+                        self.end_headers()
+                        with open(web_path, "rb") as f:
+                            self.wfile.write(f.read())
+                    else:
+                        self._send({"status": "ok", "model": os.path.basename(api.model_path), "docs": "/v1/models, /v1/completions, /v1/chat/completions"})
                 else:
                     self._send({"error": "not found"}, 404)
 
