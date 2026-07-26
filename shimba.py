@@ -251,10 +251,9 @@ class GPT(nn.Module):
     @classmethod
     def load(cls, path: str):
         try:
-            import torch.serialization as _ts
-            with _ts.safe_globals([GPTConfig]):
-                ckpt = torch.load(path, map_location="cpu", weights_only=True)
-        except: ckpt = torch.load(path, map_location="cpu")
+            ckpt = torch.load(path, map_location="cpu", weights_only=False)
+        except:
+            ckpt = torch.load(path, map_location="cpu")
         model = cls(ckpt["config"])
         model.load_state_dict(ckpt.get("state_dict", ckpt.get("model")))
         model.eval()
@@ -526,27 +525,196 @@ def chat_loop(model_path: str, temperature=0.8, top_k=40):
 
 
 # ═══════════════════════════════════════════════════════════════
-# HTTP SERVER
+# API SERVER — OpenAI-compatible HTTP API
 # ═══════════════════════════════════════════════════════════════
 
-def serve(model_path: str, port=8000):
-    tok = CharTokenizer.load(CharTokenizer.default_path(model_path))
-    model = GPT.load(model_path)
-    from http.server import HTTPServer, BaseHTTPRequestHandler
-    class Handler(BaseHTTPRequestHandler):
-        def do_POST(self):
-            n = int(self.headers.get('Content-Length', 0))
-            body = json.loads(self.rfile.read(n))
-            text = generate(model, tok, body.get('prompt',''), body.get('max_tokens',200),
-                          body.get('temperature',0.8), body.get('top_k',40))
-            self.send_response(200)
-            self.send_header('Content-Type', 'application/json')
-            self.end_headers()
-            self.wfile.write(json.dumps({'response': text}).encode())
-        def log_message(self, *a): pass
-    server = HTTPServer(('0.0.0.0', port), Handler)
-    print(f"Serving on http://0.0.0.0:{port}  POST / with {{'prompt': '...'}}")
-    server.serve_forever()
+class ShimbaAPI:
+    def __init__(self, model_path: str, host="0.0.0.0", port=8000):
+        self.model_path = model_path
+        self.host = host
+        self.port = port
+        self.tokenizer = CharTokenizer.load(CharTokenizer.default_path(model_path))
+        self.model = GPT.load(model_path)
+        self.model.eval()
+
+    def completions(self, prompt: str, max_tokens=200, temperature=0.8, top_k=40, top_p=0.95, stream=False, **kw):
+        if stream:
+            return self._stream_completions(prompt, max_tokens, temperature, top_k, top_p)
+        text = generate(self.model, self.tokenizer, prompt, max_tokens, temperature, top_k, top_p)
+        return {
+            "id": f"cmpl-{random.randint(0,999999)}",
+            "object": "text_completion",
+            "created": int(time.time()),
+            "model": os.path.basename(self.model_path),
+            "choices": [{"text": text, "index": 0, "finish_reason": "stop"}],
+            "usage": {"prompt_tokens": len(self.tokenizer.encode(prompt)), "completion_tokens": len(self.tokenizer.encode(text)), "total_tokens": 0}
+        }
+
+    def _stream_completions(self, prompt, max_tokens, temperature, top_k, top_p):
+        ids = self.tokenizer.encode(prompt) or [0]
+        idx = torch.tensor([ids], dtype=torch.int64)
+        for _ in range(max_tokens):
+            logits, _ = self.model(idx[:, -self.model.cfg.block_size:])
+            logits = logits[:, -1, :] / max(temperature, 1e-8)
+            if top_k > 0:
+                k = min(top_k, logits.size(-1))
+                logits = logits.masked_fill(logits < torch.topk(logits, k).values[:, -1:], float('-inf'))
+            if top_p < 1.0:
+                sl, si = torch.sort(logits, descending=True)
+                cp = torch.cumsum(F.softmax(sl, dim=-1), dim=-1)
+                sl[cp - F.softmax(sl, dim=-1) > top_p] = float('-inf')
+                logits = torch.scatter(logits, 1, si, sl)
+            nid = torch.multinomial(F.softmax(logits, dim=-1), 1)
+            token = nid.item()
+            text = self.tokenizer.decode([token])
+            yield f"data: {json.dumps({'choices': [{'text': text, 'index': 0}]})}\n\n"
+            idx = torch.cat([idx, nid], dim=1)
+        yield "data: [DONE]\n\n"
+
+    def chat_completions(self, messages, max_tokens=200, temperature=0.8, top_k=40, top_p=0.95, stream=False, **kw):
+        prompt = self._messages_to_prompt(messages)
+        if stream:
+            return self._stream_chat(prompt, max_tokens, temperature, top_k, top_p)
+        text = generate(self.model, self.tokenizer, prompt, max_tokens, temperature, top_k, top_p)
+        if text.startswith(prompt): text = text[len(prompt):]
+        return {
+            "id": f"chatcmpl-{random.randint(0,999999)}",
+            "object": "chat.completion",
+            "created": int(time.time()),
+            "model": os.path.basename(self.model_path),
+            "choices": [{"message": {"role": "assistant", "content": text.strip()}, "index": 0, "finish_reason": "stop"}],
+        }
+
+    def _stream_chat(self, prompt, max_tokens, temperature, top_k, top_p):
+        ids = self.tokenizer.encode(prompt) or [0]
+        idx = torch.tensor([ids], dtype=torch.int64)
+        for _ in range(max_tokens):
+            logits, _ = self.model(idx[:, -self.model.cfg.block_size:])
+            logits = logits[:, -1, :] / max(temperature, 1e-8)
+            if top_k > 0:
+                k = min(top_k, logits.size(-1))
+                logits = logits.masked_fill(logits < torch.topk(logits, k).values[:, -1:], float('-inf'))
+            if top_p < 1.0:
+                sl, si = torch.sort(logits, descending=True)
+                cp = torch.cumsum(F.softmax(sl, dim=-1), dim=-1)
+                sl[cp - F.softmax(sl, dim=-1) > top_p] = float('-inf')
+                logits = torch.scatter(logits, 1, si, sl)
+            nid = torch.multinomial(F.softmax(logits, dim=-1), 1)
+            token = nid.item()
+            text = self.tokenizer.decode([token])
+            yield f"data: {json.dumps({'choices': [{'delta': {'content': text}, 'index': 0}]})}\n\n"
+            idx = torch.cat([idx, nid], dim=1)
+        yield "data: [DONE]\n\n"
+
+    def _messages_to_prompt(self, messages):
+        prompt = ""
+        for m in messages:
+            role = m.get("role", "user")
+            content = m.get("content", "")
+            if role == "system":
+                prompt += f"System: {content}\n"
+            elif role == "user":
+                prompt += f"User: {content}\n"
+            elif role == "assistant":
+                prompt += f"Assistant: {content}\n"
+        prompt += "Assistant:"
+        return prompt
+
+    def list_models(self):
+        return {
+            "object": "list",
+            "data": [{"id": os.path.basename(self.model_path), "object": "model", "created": int(time.time()), "owned_by": "shimba"}]
+        }
+
+    def run(self):
+        from http.server import HTTPServer, BaseHTTPRequestHandler
+        import urllib.parse
+
+        api = self
+
+        class Handler(BaseHTTPRequestHandler):
+            def _send(self, data, status=200):
+                self.send_response(status)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                self.wfile.write(json.dumps(data).encode())
+
+            def _read_body(self):
+                n = int(self.headers.get("Content-Length", 0))
+                return json.loads(self.rfile.read(n)) if n else {}
+
+            def do_OPTIONS(self):
+                self.send_response(200)
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+                self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+                self.end_headers()
+
+            def do_GET(self):
+                parsed = urllib.parse.urlparse(self.path)
+                if parsed.path == "/v1/models":
+                    self._send(api.list_models())
+                elif parsed.path in ("/", "/health", "/v1"):
+                    self._send({"status": "ok", "model": os.path.basename(api.model_path), "docs": "/v1/models, /v1/completions, /v1/chat/completions"})
+                else:
+                    self._send({"error": "not found"}, 404)
+
+            def do_POST(self):
+                parsed = urllib.parse.urlparse(self.path)
+                body = self._read_body()
+
+                if parsed.path == "/v1/completions":
+                    is_stream = body.pop("stream", False)
+                    if is_stream:
+                        self.send_response(200)
+                        self.send_header("Content-Type", "text/event-stream")
+                        self.send_header("Access-Control-Allow-Origin", "*")
+                        self.send_header("Cache-Control", "no-cache")
+                        self.end_headers()
+                        for chunk in api.completions(stream=True, **body):
+                            self.wfile.write(chunk.encode())
+                            self.wfile.flush()
+                        return
+                    result = api.completions(**body)
+                    self._send(result)
+
+                elif parsed.path == "/v1/chat/completions":
+                    is_stream = body.pop("stream", False)
+                    if is_stream:
+                        self.send_response(200)
+                        self.send_header("Content-Type", "text/event-stream")
+                        self.send_header("Access-Control-Allow-Origin", "*")
+                        self.send_header("Cache-Control", "no-cache")
+                        self.end_headers()
+                        for chunk in api.chat_completions(stream=True, **body):
+                            self.wfile.write(chunk.encode())
+                            self.wfile.flush()
+                        return
+                    result = api.chat_completions(**body)
+                    self._send(result)
+                else:
+                    self._send({"error": "not found"}, 404)
+
+            def log_message(self, *a): pass
+
+        server = HTTPServer((api.host, api.port), Handler)
+        print(f"\n{'='*50}")
+        print(f"  Shimba API Server")
+        print(f"  Model: {api.model_path}")
+        print(f"  URL:   http://{api.host}:{api.port}")
+        print(f"{'='*50}")
+        print(f"  Endpoints:")
+        print(f"    GET  /                  Health check")
+        print(f"    GET  /v1/models         List models")
+        print(f"    POST /v1/completions    Text completion")
+        print(f"    POST /v1/chat/completions  Chat completion")
+        print(f"  Usage:  curl http://{api.host}:{api.port}/v1/completions ")
+        print(f"          -d '{{\"prompt\":\"Hello\",\"max_tokens\":50}}'")
+        print(f"  SDK:    from shimbasdk import ShimbaClient")
+        print(f"          client = ShimbaClient(base_url='http://{api.host}:{api.port}')")
+        print(f"{'='*50}\n")
+        server.serve_forever()
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -665,9 +833,11 @@ def main():
         import argparse
         p = argparse.ArgumentParser()
         p.add_argument("--model", required=True)
+        p.add_argument("--host", default="0.0.0.0")
         p.add_argument("--port", type=int, default=8000)
         args = p.parse_args(sys.argv[2:])
-        serve(args.model, args.port)
+        api = ShimbaAPI(args.model, host=args.host, port=args.port)
+        api.run()
         return
 
     print(f"Unknown command: {cmd}")
