@@ -1,0 +1,10 @@
+version: "3.9"
+services:
+  shimba:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./models:/app/models
+      - ./data:/app/data
+    command: python shimba.py serve --model /app/models/model.pth --port 8000

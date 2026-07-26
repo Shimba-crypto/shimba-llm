@@ -1,4 +1,4 @@
-#!/home/shimba/Shimba-LLM-Training/venv/bin/python
+#!/usr/bin/env python3
 """
 chat.py -- Interactive chat with a trained Shimba LLM model.
 
@@ -86,31 +86,11 @@ def main():
         sys.exit(1)
     tokenizer = CharTokenizer.load(tok_path)
 
-    # Load model
     if not os.path.exists(args.model):
         print(f"[error] Model file not found: {args.model}")
         sys.exit(1)
     print(f"[chat] Loading model from {args.model} ...")
-    
-    # Custom load that handles both 'state_dict' and 'model' keys
-    checkpoint = torch.load(args.model, map_location="cpu", weights_only=False)
-    if "config" not in checkpoint:
-        print("[error] Checkpoint missing 'config' key")
-        sys.exit(1)
-    
-    # Try to get state dict from either 'model' or 'state_dict'
-    if "state_dict" in checkpoint:
-        state_dict = checkpoint["state_dict"]
-    elif "model" in checkpoint:
-        state_dict = checkpoint["model"]
-    else:
-        print("[error] Checkpoint has no 'state_dict' or 'model' key")
-        sys.exit(1)
-    
-    cfg = checkpoint["config"]
-    model = GPT(cfg)
-    model.load_state_dict(state_dict)
-    model.eval()
+    model = GPT.load(args.model)
 
     # Create chat session
     chat = ChatSession(
