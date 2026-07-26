@@ -111,7 +111,11 @@
   <div class="chat-list" id="chatList"></div>
   <div class="sidebar-footer">
     <span class="model-badge" id="modelBadge">BaseModel.pth</span>
-    <span>v1.0</span>
+    <div style="display:flex;gap:6px">
+      <button onclick="exportJSON()" title="Export as JSON" style="background:none;border:none;color:#6b6b80;cursor:pointer;font-size:14px;padding:2px">📋</button>
+      <button onclick="exportTXT()" title="Export as training data (.txt)" style="background:none;border:none;color:#6b6b80;cursor:pointer;font-size:14px;padding:2px">💾</button>
+      <button onclick="exportAll()" title="Export ALL chats for training" style="background:none;border:none;color:#6b6b80;cursor:pointer;font-size:14px;padding:2px">📦</button>
+    </div>
   </div>
 </div>
 
@@ -410,7 +414,43 @@ fetch(`${API_URL}/v1/models`).then(r => r.json()).then(data => {
   document.getElementById('chatTitle').textContent = data.data[0]?.id || 'Shimba Chat';
 }).catch(() => showToast('Could not connect to API server'));
 
-newChat();
-</script>
+  newChat();
+
+function exportJSON() {
+  const data = JSON.stringify(currentMessages, null, 2);
+  download(data, `chat_${Date.now()}.json`, 'application/json');
+}
+
+function exportTXT() {
+  let txt = '';
+  for (const m of currentMessages) {
+    if (m.role === 'user') txt += `User: ${m.content}\n`;
+    else if (m.role === 'assistant') txt += `Response: ${m.content}\n`;
+  }
+  download(txt, `chat_${Date.now()}.txt`, 'text/plain');
+}
+
+function exportAll() {
+  let allTxt = '';
+  for (const chat of chats) {
+    allTxt += `### ${chat.title || 'Chat'}\n`;
+    for (const m of chat.messages || []) {
+      if (m.role === 'user') allTxt += `User: ${m.content}\n`;
+      else if (m.role === 'assistant') allTxt += `Response: ${m.content}\n`;
+    }
+    allTxt += '\n';
+  }
+  download(allTxt, `all_chats_${Date.now()}.txt`, 'text/plain');
+  showToast(`Exported ${chats.length} chats as training data`);
+}
+
+function download(content, filename, mime) {
+  const blob = new Blob([content], { type: mime });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
 </body>
 </html>
