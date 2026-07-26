@@ -1,4 +1,4 @@
-#!/home/shimba/Shimba-LLM-Training/venv/bin/python
+#!/usr/bin/env python3
 """
 benchmark.py — Evaluate a Shimba LLM model on a standard set of prompts.
 

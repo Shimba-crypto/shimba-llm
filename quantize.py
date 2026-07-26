@@ -1,4 +1,4 @@
-#!/home/shimba/Shimba-LLM-Training/venv/bin/python
+#!/usr/bin/env python3
 """
 quantize.py -- Reduce precision or export format of a trained model.
 

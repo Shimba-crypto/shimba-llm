@@ -10,7 +10,7 @@ Usage:
   # Serve:    python shimba.py serve --model model.pth --port 8000
 """
 
-import os, sys, math, json, time, random, shutil, tempfile
+import os, sys, math, json, time, random, shutil, tempfile, re, urllib.parse, mimetypes, http.server
 from dataclasses import dataclass
 from typing import Optional, List, Tuple
 
@@ -536,11 +536,122 @@ class ShimbaAPI:
         self.tokenizer = CharTokenizer.load(CharTokenizer.default_path(model_path))
         self.model = GPT.load(model_path)
         self.model.eval()
+        self.request_count = 0
+        self.token_count = 0
+        self.upload_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "uploads")
+        os.makedirs(self.upload_dir, exist_ok=True)
+        self.documents = {}  # name -> text content for RAG
+        self.embeddings_cache = {}  # text -> vector
 
+    # ── RAG: Web Search ──────────────────────────────────────
+    def rag_search(self, query: str, num_results=5):
+        results = []
+        try:
+            import urllib.request, urllib.parse
+            url = f"https://html.duckduckgo.com/html/?q={urllib.parse.quote(query)}"
+            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+            html = urllib.request.urlopen(req, timeout=10).read().decode()
+            import re
+            snippets = re.findall(r'<a[^>]+class="result__a[^>]*>([^<]+)</a>.*?<a[^>]+class="result__snippet[^>]*>([^<]*)</a>', html, re.DOTALL)
+            for title, snippet in snippets[:num_results]:
+                results.append({"title": title.strip(), "snippet": snippet.strip()})
+        except Exception as e:
+            return {"error": str(e), "results": []}
+        return {"results": results}
+
+    # ── RAG: Document Upload & Search ────────────────────────
+    def upload_doc(self, name: str, content: str):
+        self.documents[name] = content
+        path = os.path.join(self.upload_dir, name)
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(content)
+        return {"status": "ok", "name": name, "size": len(content)}
+
+    def list_docs(self):
+        return list(self.documents.keys())
+
+    def rag_docs(self, query: str, num_results=3):
+        if not self.documents:
+            return {"results": []}
+        scores = []
+        q_lower = query.lower()
+        for name, text in self.documents.items():
+            paragraphs = text.split("\n\n")
+            for para in paragraphs:
+                if len(para.strip()) < 20: continue
+                words = q_lower.split()
+                score = sum(para.lower().count(w) for w in words) / max(len(words), 1)
+                if score > 0:
+                    scores.append((score, name, para.strip()[:500]))
+        scores.sort(key=lambda x: -x[0])
+        return {"results": [{"name": n, "snippet": p, "score": round(s, 3)} for s, n, p in scores[:num_results]]}
+
+    # ── Embeddings (TF-IDF style for semantic search) ────────
+    def _embed(self, text: str):
+        if text in self.embeddings_cache:
+            return self.embeddings_cache[text]
+        words = set(text.lower().split())
+        vec = {w: text.lower().count(w) for w in words}
+        self.embeddings_cache[text] = vec
+        return vec
+
+    def _cosine_sim(self, v1, v2):
+        common = set(v1) & set(v2)
+        dot = sum(v1[w] * v2[w] for w in common)
+        n1 = sum(v*v for v in v1.values()) ** 0.5
+        n2 = sum(v*v for v in v2.values()) ** 0.5
+        return dot / (n1 * n2) if n1 * n2 else 0
+
+    def semantic_search(self, query: str, texts: list, top_k=5):
+        q_vec = self._embed(query)
+        scored = [(self._cosine_sim(q_vec, self._embed(t)), t) for t in texts]
+        scored.sort(key=lambda x: -x[0])
+        return [{"text": t, "score": round(s, 3)} for s, t in scored[:top_k]]
+
+    # ── Tools: Calculator ────────────────────────────────────
+    def tool_calculate(self, expr: str):
+        safe = re.sub(r'[^0-9+\-*/.() ]', '', expr)
+        try:
+            result = eval(safe, {"__builtins__": {}}, {})
+            return {"expression": expr, "result": result}
+        except Exception as e:
+            return {"expression": expr, "error": str(e)}
+
+    # ── Tool router ──────────────────────────────────────────
+    def run_tool(self, name: str, **kwargs):
+        if name == "calculate":
+            return self.tool_calculate(kwargs.get("expression", ""))
+        elif name == "web_search":
+            return self.rag_search(kwargs.get("query", ""))
+        elif name == "doc_search":
+            return self.rag_docs(kwargs.get("query", ""))
+        return {"error": f"unknown tool: {name}"}
+
+    # ── Admin Stats ──────────────────────────────────────────
+    def admin_stats(self):
+        n_params = sum(p.numel() for p in self.model.parameters())
+        return {
+            "model": os.path.basename(self.model_path),
+            "parameters": n_params,
+            "parameters_m": f"{n_params/1e6:.1f}M",
+            "vocab_size": self.model.cfg.vocab_size,
+            "block_size": self.model.cfg.block_size,
+            "n_layers": self.model.cfg.n_layer,
+            "n_heads": self.model.cfg.n_head,
+            "n_embd": self.model.cfg.n_embd,
+            "requests": self.request_count,
+            "tokens_generated": self.token_count,
+            "documents": len(self.documents),
+            "memory_mb": round(n_params * 4 / 1024 / 1024, 1),
+        }
+
+    # ── Existing methods ─────────────────────────────────────
     def completions(self, prompt: str, max_tokens=200, temperature=0.8, top_k=40, top_p=0.95, stream=False, **kw):
+        self.request_count += 1
         if stream:
             return self._stream_completions(prompt, max_tokens, temperature, top_k, top_p)
         text = generate(self.model, self.tokenizer, prompt, max_tokens, temperature, top_k, top_p)
+        self.token_count += len(self.tokenizer.encode(text))
         return {
             "id": f"cmpl-{random.randint(0,999999)}",
             "object": "text_completion",
@@ -628,8 +739,6 @@ class ShimbaAPI:
 
     def run(self):
         from http.server import HTTPServer, BaseHTTPRequestHandler
-        import urllib.parse
-        import mimetypes
         web_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "index.html")
 
         api = self
@@ -667,14 +776,29 @@ class ShimbaAPI:
                             self.wfile.write(f.read())
                     else:
                         self._send({"status": "ok", "model": os.path.basename(api.model_path), "docs": "/v1/models, /v1/completions, /v1/chat/completions"})
+                elif parsed.path == "/manifest.json":
+                    mf_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "manifest.json")
+                    if os.path.exists(mf_path):
+                        self.send_response(200)
+                        self.send_header("Content-Type", "application/json")
+                        self.send_header("Access-Control-Allow-Origin", "*")
+                        self.end_headers()
+                        with open(mf_path, "rb") as f:
+                            self.wfile.write(f.read())
+                    else:
+                        self._send({"error": "not found"}, 404)
+                elif parsed.path == "/v1/admin/stats":
+                    self._send(api.admin_stats())
+                elif parsed.path == "/v1/rag/documents":
+                    self._send({"documents": api.list_docs()})
                 else:
                     self._send({"error": "not found"}, 404)
 
             def do_POST(self):
                 parsed = urllib.parse.urlparse(self.path)
-                body = self._read_body()
 
                 if parsed.path == "/v1/completions":
+                    body = self._read_body()
                     is_stream = body.pop("stream", False)
                     if is_stream:
                         self.send_response(200)
@@ -690,6 +814,7 @@ class ShimbaAPI:
                     self._send(result)
 
                 elif parsed.path == "/v1/chat/completions":
+                    body = self._read_body()
                     is_stream = body.pop("stream", False)
                     if is_stream:
                         self.send_response(200)
@@ -703,6 +828,59 @@ class ShimbaAPI:
                         return
                     result = api.chat_completions(**body)
                     self._send(result)
+                elif parsed.path == "/v1/rag/search":
+                    body = self._read_body()
+                    self._send(api.rag_search(body.get("query", ""), body.get("num_results", 5)))
+
+                elif parsed.path == "/v1/rag/documents":
+                    body = self._read_body()
+                    name = body.get("name", f"doc_{int(time.time())}.txt")
+                    content = body.get("content", "")
+                    self._send(api.upload_doc(name, content))
+
+                elif parsed.path == "/v1/rag/search_docs":
+                    body = self._read_body()
+                    self._send(api.rag_docs(body.get("query", "")))
+
+                elif parsed.path == "/v1/tools/run":
+                    body = self._read_body()
+                    self._send(api.run_tool(body.get("tool", ""), **body.get("params", {})))
+
+                elif parsed.path == "/v1/admin/stats":
+                    self._send(api.admin_stats())
+
+                elif parsed.path == "/v1/search/chats":
+                    body = self._read_body()
+                    self._send(api.semantic_search(
+                        body.get("query", ""),
+                        body.get("texts", []),
+                        body.get("top_k", 5),
+                    ))
+
+                elif parsed.path == "/v1/upload":
+                    ct = self.headers.get("Content-Type", "")
+                    if "multipart" in ct:
+                        boundary = ct.split("boundary=")[1].strip()
+                        raw = self.rfile.read(int(self.headers.get("Content-Length", 0)))
+                        for part in raw.split(b"--" + boundary.encode()):
+                            if b'name="file"' in part or b'name="content"' in part:
+                                idx = part.find(b"\r\n\r\n")
+                                if idx > 0:
+                                    content = part[idx+4:].strip().decode("utf-8", errors="replace")
+                                    name = f"upload_{int(time.time())}.txt"
+                                    for line in part.split(b"\r\n"):
+                                        if b'filename="' in line:
+                                            fn = line.split(b'filename="')[1].split(b'"')[0].decode()
+                                            if fn: name = fn
+                                    self._send(api.upload_doc(name, content))
+                                    break
+                    else:
+                        body = self._read_body()
+                        self._send(api.upload_doc(
+                            body.get("name", f"upload_{int(time.time())}.txt"),
+                            body.get("content", ""),
+                        ))
+
                 else:
                     self._send({"error": "not found"}, 404)
 

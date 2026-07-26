@@ -1,4 +1,4 @@
-#!/home/shimba/Shimba-LLM-Training/venv/bin/python
+#!/usr/bin/env python3
 """
 quick_train.py -- Fast training with checkpoint every iteration and resume support.
 """

@@ -1,0 +1,14 @@
+{
+  "name": "Shimba Chat",
+  "short_name": "Shimba",
+  "description": "Local LLM chat interface",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1a1a2e",
+  "theme_color": "#1a1a2e",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'><rect width='128' height='128' rx='24' fill='%23a78bfa'/><text x='64' y='86' font-size='64' text-anchor='middle' fill='white'>✦</text></svg>", "type": "image/svg+xml", "sizes": "128x128" },
+    { "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='80' fill='%23a78bfa'/><text x='256' y='340' font-size='220' text-anchor='middle' fill='white'>✦</text></svg>", "type": "image/svg+xml", "sizes": "512x512", "purpose": "any maskable" }
+  ]
+}

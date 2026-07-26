@@ -2,103 +2,146 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<meta name="theme-color" content="#1a1a2e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="/manifest.json">
 <title>Shimba Chat</title>
 <style>
   *{margin:0;padding:0;box-sizing:border-box}
-  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:#1a1a2e;color:#e4e4e7;height:100vh;display:flex;flex-direction:column;overflow:hidden}
-  
-  ::-webkit-scrollbar{width:6px}
-  ::-webkit-scrollbar-track{background:transparent}
-  ::-webkit-scrollbar-thumb{background:#3f3f5e;border-radius:3px}
-  ::-webkit-scrollbar-thumb:hover{background:#5a5a7a}
-
-  .sidebar{width:260px;background:#16162a;border-right:1px solid #2a2a4a;display:flex;flex-direction:column;position:fixed;left:0;top:0;bottom:0;z-index:10;transform:translateX(-100%);transition:transform .3s}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:#1a1a2e;color:#e4e4e7;height:100dvh;display:flex;flex-direction:column;overflow:hidden;font-size:14px}
+  ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:#3f3f5e;border-radius:2px}
+  .sidebar{width:280px;background:#16162a;border-right:1px solid #2a2a4a;display:flex;flex-direction:column;position:fixed;left:0;top:0;bottom:0;z-index:10;transform:translateX(-100%);transition:transform .25s}
   .sidebar.open{transform:translateX(0)}
-  @media(min-width:768px){.sidebar{transform:translateX(0)}.sidebar-toggle{display:none!important}.main{margin-left:260px}}
-
-  .sidebar-header{padding:16px;border-bottom:1px solid #2a2a4a;display:flex;align-items:center;justify-content:space-between}
-  .sidebar-header h2{font-size:16px;font-weight:600;color:#e4e4e7}
-  .sidebar-header h2 span{color:#a78bfa}
-  .new-chat-btn{background:#3b82f6;color:#fff;border:none;padding:8px 16px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;transition:background .2s}
+  @media(min-width:900px){.sidebar{transform:translateX(0)}.sidebar-toggle{display:none!important}.main{margin-left:280px}}
+  .sidebar-header{padding:12px 14px;border-bottom:1px solid #2a2a4a;display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .sidebar-header h2{font-size:15px;font-weight:600;white-space:nowrap}.sidebar-header h2 span{color:#a78bfa}
+  .new-chat-btn{background:#3b82f6;color:#fff;border:none;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:12px;font-weight:500;white-space:nowrap}
   .new-chat-btn:hover{background:#2563eb}
-
-  .chat-list{flex:1;overflow-y:auto;padding:8px}
-  .chat-item{padding:10px 12px;border-radius:8px;cursor:pointer;font-size:13px;color:#a1a1aa;transition:background .2s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .chat-item:hover{background:#1e1e3a}
-  .chat-item.active{background:#2a2a4a;color:#e4e4e7}
-
-  .sidebar-footer{padding:12px 16px;border-top:1px solid #2a2a4a;font-size:12px;color:#6b6b80;display:flex;justify-content:space-between;align-items:center}
-  .model-badge{background:#2a2a4a;padding:4px 10px;border-radius:6px;font-size:11px;color:#a78bfa}
-
-  .main{flex:1;display:flex;flex-direction:column;height:100vh;position:relative}
-  
-  .top-bar{display:flex;align-items:center;padding:12px 20px;border-bottom:1px solid #2a2a4a;background:#1a1a2e;gap:12px;flex-shrink:0}
-  .sidebar-toggle{background:none;border:none;color:#a1a1aa;font-size:20px;cursor:pointer;padding:4px;border-radius:6px;display:flex;align-items:center}
+  .sidebar-tabs{display:flex;border-bottom:1px solid #2a2a4a}
+  .sidebar-tab{flex:1;padding:8px;text-align:center;font-size:12px;color:#6b6b80;cursor:pointer;border-bottom:2px solid transparent;transition:all .2s}
+  .sidebar-tab:hover{color:#a1a1aa}.sidebar-tab.active{color:#a78bfa;border-bottom-color:#a78bfa}
+  .sidebar-panel{flex:1;overflow-y:auto;display:none}.sidebar-panel.active{display:flex;flex-direction:column}
+  .sidebar-panel-content{padding:6px 10px}
+  .chat-list{padding:4px}.chat-item{padding:8px 10px;border-radius:6px;cursor:pointer;font-size:13px;color:#a1a1aa;transition:background .2s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:6px}
+  .chat-item:hover{background:#1e1e3a}.chat-item.active{background:#2a2a4a;color:#e4e4e7}.chat-item .del-chat{opacity:0;margin-left:auto;background:none;border:none;color:#6b6b80;cursor:pointer;font-size:12px;padding:2px 4px;border-radius:4px}
+  .chat-item:hover .del-chat{opacity:1}.chat-item .del-chat:hover{color:#ef4444;background:rgba(239,68,68,.15)}
+  .search-chats{display:flex;gap:6px;padding:8px 10px;border-bottom:1px solid #2a2a4a;margin-bottom:4px}
+  .search-chats input{flex:1;background:#1e1e3a;border:1px solid #3f3f5e;border-radius:6px;padding:6px 10px;color:#e4e4e7;font-size:12px;outline:none}
+  .search-chats input:focus{border-color:#a78bfa}
+  .sidebar-footer{padding:8px 12px;border-top:1px solid #2a2a4a;font-size:11px;color:#6b6b80;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:4px}
+  .model-badge{background:#2a2a4a;padding:3px 8px;border-radius:4px;font-size:10px;color:#a78bfa;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .main{flex:1;display:flex;flex-direction:column;height:100dvh;position:relative}
+  .top-bar{display:flex;align-items:center;padding:8px 14px;border-bottom:1px solid #2a2a4a;background:#1a1a2e;gap:8px;flex-shrink:0;flex-wrap:wrap}
+  .sidebar-toggle{background:none;border:none;color:#a1a1aa;font-size:18px;cursor:pointer;padding:4px;border-radius:4px;display:flex}
   .sidebar-toggle:hover{background:#2a2a4a;color:#e4e4e7}
-  .top-bar-title{font-size:14px;font-weight:500;color:#a1a1aa;flex:1}
-
-  .controls{display:flex;align-items:center;gap:12px}
-  .controls label{font-size:12px;color:#6b6b80;display:flex;align-items:center;gap:4px}
-  .controls select,.controls input[type="range"]{background:#2a2a4a;color:#e4e4e7;border:1px solid #3f3f5e;border-radius:6px;padding:4px 8px;font-size:12px}
-  .controls select{appearance:none;padding-right:20px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23a1a1aa' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 6px center;cursor:pointer}
-  .controls input[type="range"]{width:80px;padding:0;height:4px;accent-color:#a78bfa}
-
-  .messages{flex:1;overflow-y:auto;padding:0;scroll-behavior:smooth}
-  .messages-inner{max-width:800px;margin:0 auto;padding:24px 20px}
-
-  .welcome{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;text-align:center;padding:40px}
-  .welcome-icon{width:64px;height:64px;background:linear-gradient(135deg,#a78bfa,#3b82f6);border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:28px;margin-bottom:20px;box-shadow:0 8px 32px rgba(167,139,250,.3)}
-  .welcome h1{font-size:24px;font-weight:600;margin-bottom:8px;background:linear-gradient(135deg,#a78bfa,#3b82f6);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-  .welcome p{color:#6b6b80;font-size:14px;max-width:400px;line-height:1.6}
-  .welcome-suggestions{display:flex;gap:8px;margin-top:24px;flex-wrap:wrap;justify-content:center}
-  .welcome-suggestions button{background:#2a2a4a;border:1px solid #3f3f5e;color:#a1a1aa;padding:8px 16px;border-radius:8px;cursor:pointer;font-size:13px;transition:all .2s}
-  .welcome-suggestions button:hover{background:#3f3f5e;color:#e4e4e7;border-color:#5a5a7a}
-
-  .message{display:flex;gap:12px;padding:16px 0;animation:fadeIn .3s}
-  @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-  
+  .top-bar-title{font-size:13px;font-weight:500;color:#a1a1aa;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .controls{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  .controls label{font-size:11px;color:#6b6b80;display:flex;align-items:center;gap:3px}
+  .controls select,.controls input[type=range]{background:#2a2a4a;color:#e4e4e7;border:1px solid #3f3f5e;border-radius:4px;padding:3px 6px;font-size:11px}
+  .controls select{cursor:pointer}
+  .controls input[type=range]{width:60px;height:3px;accent-color:#a78bfa;padding:0}
+  .ctrl-btn{background:none;border:1px solid #3f3f5e;color:#a1a1aa;padding:4px 8px;border-radius:4px;cursor:pointer;font-size:11px;transition:all .2s}
+  .ctrl-btn:hover{background:#2a2a4a;color:#e4e4e7}.ctrl-btn.active{background:#a78bfa20;border-color:#a78bfa;color:#a78bfa}
+  .messages{flex:1;overflow-y:auto;scroll-behavior:smooth}
+  .messages-inner{max-width:800px;margin:0 auto;padding:16px 14px}
+  .welcome{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;text-align:center;padding:30px 20px}
+  .welcome-icon{width:56px;height:56px;background:linear-gradient(135deg,#a78bfa,#3b82f6);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:16px}
+  .welcome h1{font-size:20px;font-weight:600;margin-bottom:6px;background:linear-gradient(135deg,#a78bfa,#3b82f6);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+  .welcome p{color:#6b6b80;font-size:13px;max-width:380px;line-height:1.5}
+  .welcome-suggestions{display:flex;gap:6px;margin-top:20px;flex-wrap:wrap;justify-content:center}
+  .welcome-suggestions button{background:#2a2a4a;border:1px solid #3f3f5e;color:#a1a1aa;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:12px}
+  .welcome-suggestions button:hover{background:#3f3f5e;color:#e4e4e7}
+  .comparison-mode .messages-inner{max-width:1200px}
+  .comparison-row{display:flex;gap:12px;margin:4px 0}
+  .comparison-col{flex:1;min-width:0}
+  .comparison-col .message{margin-bottom:4px}
+  .comparison-col .message .message-content{max-width:100%}
+  .comparison-col .message.user .message-content{background:transparent;color:#a78bfa;padding:4px 8px;font-size:13px}
+  .comparison-col .message.assistant .message-content{background:#1e1e3a;border:1px solid #3f3f5e;padding:8px 12px}
+  .comparison-label{text-align:center;font-size:11px;color:#6b6b80;padding:4px 0 8px;border-bottom:1px solid #2a2a4a;margin-bottom:8px;display:flex;justify-content:center;gap:20px}
+  .comparison-label span{background:#2a2a4a;padding:3px 12px;border-radius:10px}
+  .message{display:flex;gap:10px;padding:12px 0;animation:fadeIn .3s}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
   .message.user{flex-direction:row-reverse}
   .message.user .avatar{background:linear-gradient(135deg,#3b82f6,#2563eb)}
   .message.assistant .avatar{background:linear-gradient(135deg,#a78bfa,#7c3aed)}
-  
-  .avatar{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;flex-shrink:0;color:#fff}
-  .message-content{max-width:75%;padding:10px 16px;border-radius:12px;font-size:14px;line-height:1.7;word-wrap:break-word}
-  .message.user .message-content{background:#3b82f6;color:#fff;border-bottom-right-radius:4px}
-  .message.assistant .message-content{background:#2a2a4a;color:#e4e4e7;border-bottom-left-radius:4px}
-  .message.system .message-content{background:transparent;color:#6b6b80;font-style:italic;text-align:center;max-width:100%;font-size:13px}
-
-  .message-content p{margin:0 0 8px}
-  .message-content p:last-child{margin-bottom:0}
-  .message-content code{background:rgba(0,0,0,.3);padding:2px 6px;border-radius:4px;font-size:13px;font-family:'JetBrains Mono','Fira Code',monospace}
-  .message-content pre{background:rgba(0,0,0,.4);padding:12px 16px;border-radius:8px;overflow-x:auto;margin:8px 0;border:1px solid rgba(255,255,255,.05)}
-  .message-content pre code{background:none;padding:0;font-size:13px}
-  .message-content ul,.message-content ol{padding-left:20px;margin:4px 0}
-  .message-content blockquote{border-left:3px solid #a78bfa;padding-left:12px;margin:8px 0;color:#a1a1aa}
-
-  .typing-indicator{display:flex;gap:4px;padding:8px 0}
-  .typing-indicator span{width:6px;height:6px;background:#a78bfa;border-radius:50%;animation:typing 1.4s infinite}
-  .typing-indicator span:nth-child(2){animation-delay:.2s}
-  .typing-indicator span:nth-child(3){animation-delay:.4s}
+  .message.tool .avatar{background:linear-gradient(135deg,#f59e0b,#d97706)}
+  .avatar{width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;flex-shrink:0;color:#fff}
+  .message-content{max-width:75%;padding:8px 14px;border-radius:10px;font-size:13px;line-height:1.6;word-wrap:break-word}
+  .message.user .message-content{background:#3b82f6;color:#fff;border-bottom-right-radius:3px}
+  .message.assistant .message-content{background:#2a2a4a;color:#e4e4e7;border-bottom-left-radius:3px}
+  .message.tool .message-content{background:#2a2a4a40;color:#a1a1aa;font-style:italic;font-size:12px;border:1px dashed #3f3f5e}
+  .message.system .message-content{background:transparent;color:#6b6b80;text-align:center;max-width:100%;font-size:12px;border:none;padding:4px 0}
+  .msg-actions{display:flex;gap:4px;margin-top:4px;opacity:0;transition:opacity .2s}.message:hover .msg-actions{opacity:1}
+  .msg-actions button{background:none;border:none;color:#6b6b80;cursor:pointer;font-size:11px;padding:2px 6px;border-radius:4px}
+  .msg-actions button:hover{background:#2a2a4a;color:#e4e4e7}
+  .message-content code{background:rgba(0,0,0,.3);padding:1px 5px;border-radius:3px;font-size:12px;font-family:monospace}
+  .message-content pre{background:rgba(0,0,0,.4);padding:10px 14px;border-radius:6px;overflow-x:auto;margin:6px 0}
+  .message-content pre code{background:none;padding:0;font-size:12px}
+  .message-content ul,.message-content ol{padding-left:18px;margin:4px 0}
+  .message-content blockquote{border-left:2px solid #a78bfa;padding-left:10px;margin:6px 0;color:#a1a1aa}
+  .message-content table{border-collapse:collapse;margin:6px 0;font-size:12px}
+  .message-content td,.message-content th{border:1px solid #3f3f5e;padding:4px 8px}
+  .message-content th{background:#2a2a4a}
+  .typing-indicator{display:flex;gap:3px;padding:6px 0}
+  .typing-indicator span{width:5px;height:5px;background:#a78bfa;border-radius:50%;animation:typing 1.4s infinite}
+  .typing-indicator span:nth-child(2){animation-delay:.2s}.typing-indicator span:nth-child(3){animation-delay:.4s}
   @keyframes typing{0%,60%,100%{opacity:.3;transform:scale(.8)}30%{opacity:1;transform:scale(1)}}
-
-  .input-area{border-top:1px solid #2a2a4a;padding:16px 20px;background:#1a1a2e;flex-shrink:0}
-  .input-inner{max-width:800px;margin:0 auto;display:flex;gap:8px;align-items:flex-end}
-  .input-wrapper{flex:1;display:flex;align-items:flex-end;background:#2a2a4a;border:1px solid #3f3f5e;border-radius:12px;padding:4px;transition:border-color .2s}
+  .input-area{border-top:1px solid #2a2a4a;padding:10px 14px;background:#1a1a2e;flex-shrink:0}
+  .input-inner{max-width:800px;margin:0 auto;display:flex;gap:6px;align-items:flex-end}
+  .input-wrapper{flex:1;display:flex;align-items:flex-end;background:#2a2a4a;border:1px solid #3f3f5e;border-radius:10px;padding:2px;transition:border-color .2s}
   .input-wrapper:focus-within{border-color:#a78bfa}
-  textarea{flex:1;background:transparent;border:none;color:#e4e4e7;font-size:14px;padding:8px 12px;resize:none;outline:none;font-family:inherit;line-height:1.5;max-height:200px}
+  .input-tools{display:flex;align-items:center;padding:0 4px}
+  .input-tools button{background:none;border:none;color:#6b6b80;cursor:pointer;font-size:16px;padding:4px;border-radius:4px;line-height:1}
+  .input-tools button:hover{color:#e4e4e7;background:#3f3f5e}
+  textarea{flex:1;background:transparent;border:none;color:#e4e4e7;font-size:13px;padding:6px 10px;resize:none;outline:none;font-family:inherit;line-height:1.5;max-height:150px}
   textarea::placeholder{color:#6b6b80}
-  .send-btn{background:#a78bfa;color:#fff;border:none;width:36px;height:36px;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;transition:all .2s;flex-shrink:0}
-  .send-btn:hover{background:#7c3aed}
-  .send-btn:disabled{background:#3f3f5e;color:#6b6b80;cursor:not-allowed}
-  .stop-btn{background:#ef4444;color:#fff;border:none;border-radius:8px;padding:8px 16px;cursor:pointer;font-size:13px;transition:all .2s;flex-shrink:0}
-  .stop-btn:hover{background:#dc2626}
-
-  .bottom-bar{display:flex;justify-content:center;padding:8px;font-size:11px;color:#3f3f5e;border-top:1px solid #2a2a4a;flex-shrink:0}
-  .bottom-bar a{color:#6b6b80;text-decoration:none}
-  .bottom-bar a:hover{color:#a78bfa}
-
-  .toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:#ef4444;color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;z-index:100;animation:fadeIn .3s;display:none}
+  .send-btn{background:#a78bfa;color:#fff;border:none;width:34px;height:34px;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+  .send-btn:hover{background:#7c3aed}.send-btn:disabled{background:#3f3f5e;color:#6b6b80;cursor:not-allowed}
+  .stop-btn{background:#ef4444;color:#fff;border:none;border-radius:8px;padding:6px 14px;cursor:pointer;font-size:12px;flex-shrink:0}
+  .bottom-bar{display:flex;justify-content:center;align-items:center;padding:6px;font-size:10px;color:#3f3f5e;border-top:1px solid #2a2a4a;flex-shrink:0;gap:8px;flex-wrap:wrap}
+  .bottom-bar a{color:#6b6b80;text-decoration:none}.bottom-bar a:hover{color:#a78bfa}
+  .toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#1e1e3a;border:1px solid #3f3f5e;color:#e4e4e7;padding:8px 18px;border-radius:8px;font-size:12px;z-index:100;animation:fadeIn .3s;display:none;box-shadow:0 4px 20px rgba(0,0,0,.4)}
+  .modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.6);z-index:50;display:none;align-items:center;justify-content:center;padding:20px}
+  .modal-overlay.show{display:flex}
+  .modal{background:#1e1e3a;border:1px solid #3f3f5e;border-radius:12px;padding:24px;max-width:500px;width:100%;max-height:80vh;overflow-y:auto}
+  .modal h3{font-size:16px;margin-bottom:12px;color:#e4e4e7}
+  .modal label{display:block;font-size:12px;color:#a1a1aa;margin-bottom:4px;margin-top:12px}
+  .modal input,.modal textarea,.modal select{width:100%;background:#2a2a4a;border:1px solid #3f3f5e;border-radius:6px;padding:8px 12px;color:#e4e4e7;font-size:13px;outline:none;font-family:inherit}
+  .modal textarea{min-height:80px;resize:vertical}
+  .modal input:focus,.modal textarea:focus{border-color:#a78bfa}
+  .modal .btn-row{display:flex;gap:8px;margin-top:16px;justify-content:flex-end}
+  .modal .btn-row button{padding:6px 16px;border-radius:6px;cursor:pointer;font-size:13px;border:none}
+  .modal .btn-primary{background:#a78bfa;color:#fff}.modal .btn-primary:hover{background:#7c3aed}
+  .modal .btn-secondary{background:#3f3f5e;color:#a1a1aa}.modal .btn-secondary:hover{background:#5a5a7a}
+  .settings-group{border-bottom:1px solid #2a2a4a;padding:10px 0}
+  .settings-group:last-child{border-bottom:none}
+  .settings-group h4{font-size:13px;color:#a78bfa;margin-bottom:6px}
+  .settings-row{display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-size:12px;color:#a1a1aa}
+  .settings-row .val{color:#e4e4e7;font-weight:500}
+  .template-item{padding:8px 10px;border-radius:6px;cursor:pointer;font-size:12px;color:#a1a1aa;transition:all .2s;display:flex;align-items:center;gap:6px}
+  .template-item:hover{background:#1e1e3a;color:#e4e4e7}
+  .template-item .del-template{opacity:0;margin-left:auto;background:none;border:none;color:#6b6b80;cursor:pointer;font-size:11px;padding:2px 4px;border-radius:4px}
+  .template-item:hover .del-template{opacity:1}.template-item .del-template:hover{color:#ef4444}
+  .doc-item{padding:6px 10px;border-radius:4px;font-size:12px;color:#6b6b80;display:flex;align-items:center;gap:6px}
+  .doc-item .doc-icon{color:#a78bfa}
+  .search-result-item{padding:6px 10px;border-radius:4px;font-size:12px;color:#a1a1aa;cursor:pointer;transition:background .2s;border-bottom:1px solid #2a2a4a}
+  .search-result-item:hover{background:#1e1e3a}
+  .search-result-item .sr-title{color:#a78bfa;font-weight:500}.search-result-item .sr-preview{color:#6b6b80;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .section-title{font-size:11px;font-weight:600;color:#6b6b80;text-transform:uppercase;letter-spacing:.5px;padding:8px 10px 4px}
+  .rag-indicator{display:inline-flex;align-items:center;gap:4px;background:#2a2a4a;border-radius:4px;padding:2px 8px;font-size:10px;color:#a78bfa;border:1px solid #3f3f5e}
+  .rag-indicator.active{background:#a78bfa20;border-color:#a78bfa}
+  .branch-indicator{color:#6b6b80;font-size:11px;padding:4px 0;text-align:center}
+  .pwa-install-banner{background:linear-gradient(135deg,#a78bfa,#3b82f6);color:#fff;padding:8px 16px;text-align:center;font-size:12px;cursor:pointer;display:none;animation:fadeIn .3s}
+  .pwa-install-banner:hover{opacity:.9}
+  .rag-context{background:#1e1e3a;border:1px solid #3f3f5e;border-radius:8px;padding:8px 12px;margin:4px 0;font-size:12px;color:#a1a1aa}
+  .rag-context .rag-title{color:#a78bfa;font-weight:500;margin-bottom:4px}
+  .file-upload{position:relative;overflow:hidden}
+  .file-upload input[type=file]{position:absolute;top:0;left:0;width:100%;height:100%;opacity:0;cursor:pointer}
+  @media(max-width:899px){.top-bar .controls .label-text{display:none}.sidebar{width:260px}}
+  @media print{.sidebar,.top-bar,.input-area,.bottom-bar,.sidebar-toggle{display:none!important}.main{margin-left:0!important}.message-content{max-width:100%!important}}
 </style>
 </head>
 <body>
@@ -106,26 +149,132 @@
 <div class="sidebar" id="sidebar">
   <div class="sidebar-header">
     <h2>Shimba<span>Chat</span></h2>
-    <button class="new-chat-btn" onclick="newChat()">+ New Chat</button>
+    <button class="new-chat-btn" onclick="newChat()">+ New</button>
   </div>
-  <div class="chat-list" id="chatList"></div>
+  <div class="sidebar-tabs">
+    <div class="sidebar-tab active" data-tab="chats" onclick="switchTab('chats')">Chats</div>
+    <div class="sidebar-tab" data-tab="templates" onclick="switchTab('templates')">Templates</div>
+    <div class="sidebar-tab" data-tab="docs" onclick="switchTab('docs')">Docs</div>
+    <div class="sidebar-tab" data-tab="settings" onclick="switchTab('settings')">Admin</div>
+  </div>
+
+  <div class="sidebar-panel active" id="panel-chats">
+    <div class="search-chats">
+      <input id="chatSearch" placeholder="Search conversations..." oninput="searchChats(this.value)">
+    </div>
+    <div class="sidebar-panel-content chat-list" id="chatList"></div>
+    <div class="search-results" id="searchResults" style="display:none;overflow-y:auto"></div>
+  </div>
+
+  <div class="sidebar-panel" id="panel-templates">
+    <div class="sidebar-panel-content">
+      <div style="display:flex;gap:6px;margin-bottom:8px">
+        <button class="ctrl-btn" onclick="showTemplateModal()" style="flex:1">+ New Template</button>
+      </div>
+      <div id="templateList"></div>
+    </div>
+  </div>
+
+  <div class="sidebar-panel" id="panel-docs">
+    <div class="sidebar-panel-content">
+      <div style="display:flex;gap:6px;margin-bottom:8px;align-items:center">
+        <span style="font-size:12px;color:#6b6b80;flex:1">Uploaded documents</span>
+        <button class="ctrl-btn file-upload" style="font-size:11px">
+          📁 Upload
+          <input type="file" multiple accept=".txt,.md,.csv,.json,.py,.js,.html,.css" onchange="uploadFiles(this.files)">
+        </button>
+      </div>
+      <div id="docList"><div style="font-size:12px;color:#6b6b80;padding:8px">No documents uploaded. Upload a file to use as context.</div></div>
+      <div style="margin-top:8px;border-top:1px solid #2a2a4a;padding-top:8px">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:#a1a1aa">
+          <input type="checkbox" id="ragToggle" onchange="onRagToggle()"> Use RAG context in chat
+        </label>
+        <div style="font-size:10px;color:#6b6b80;padding:4px 0 0 22px">Appends relevant documents to each query</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sidebar-panel" id="panel-settings">
+    <div class="sidebar-panel-content">
+      <div class="settings-group">
+        <h4>Model Info</h4>
+        <div class="settings-row"><span>Name</span><span class="val" id="statName">—</span></div>
+        <div class="settings-row"><span>Parameters</span><span class="val" id="statParams">—</span></div>
+        <div class="settings-row"><span>Layers / Heads</span><span class="val" id="statLayers">—</span></div>
+        <div class="settings-row"><span>Vocab Size</span><span class="val" id="statVocab">—</span></div>
+        <div class="settings-row"><span>Context</span><span class="val" id="statCtx">—</span></div>
+        <div class="settings-row"><span>Memory</span><span class="val" id="statMem">—</span></div>
+      </div>
+      <div class="settings-group">
+        <h4>Usage</h4>
+        <div class="settings-row"><span>Requests</span><span class="val" id="statReqs">0</span></div>
+        <div class="settings-row"><span>Tokens Generated</span><span class="val" id="statTokens">0</span></div>
+        <div class="settings-row"><span>Uploaded Docs</span><span class="val" id="statDocs">0</span></div>
+        <div class="settings-row"><span>Chats Saved</span><span class="val" id="statChats">0</span></div>
+      </div>
+      <div class="settings-group">
+        <h4>Authentication</h4>
+        <div class="settings-row"><span>API Key</span>
+          <input id="apiKeyInput" type="password" placeholder="Enter key..." style="width:120px;background:#2a2a4a;border:1px solid #3f3f5e;border-radius:4px;padding:3px 6px;color:#e4e4e7;font-size:11px;outline:none">
+        </div>
+        <div class="settings-row" style="margin-top:4px">
+          <span></span>
+          <div style="display:flex;gap:4px">
+            <button class="ctrl-btn" onclick="setApiKey()">Set</button>
+            <button class="ctrl-btn" onclick="clearApiKey()">Clear</button>
+          </div>
+        </div>
+      </div>
+      <div class="settings-group">
+        <h4>Actions</h4>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">
+          <button class="ctrl-btn" onclick="exportAllChats()">📦 Export All</button>
+          <button class="ctrl-btn" onclick="importChats()">📥 Import</button>
+          <button class="ctrl-btn" onclick="clearAllChats()">🗑 Clear All</button>
+          <button class="ctrl-btn" onclick="exportAsPDF()">📄 Export PDF</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="sidebar-footer">
-    <span class="model-badge" id="modelBadge">BaseModel.pth</span>
-    <div style="display:flex;gap:6px">
-      <button onclick="exportJSON()" title="Export as JSON" style="background:none;border:none;color:#6b6b80;cursor:pointer;font-size:14px;padding:2px">📋</button>
-      <button onclick="exportTXT()" title="Export as training data (.txt)" style="background:none;border:none;color:#6b6b80;cursor:pointer;font-size:14px;padding:2px">💾</button>
-      <button onclick="exportAll()" title="Export ALL chats for training" style="background:none;border:none;color:#6b6b80;cursor:pointer;font-size:14px;padding:2px">📦</button>
+    <span class="model-badge" id="modelBadge">Loading...</span>
+    <div style="display:flex;gap:4px">
+      <button onclick="exportCurrentJSON()" title="Export as JSON" style="background:none;border:none;color:#6b6b80;cursor:pointer;font-size:13px;padding:2px">📋</button>
+      <button onclick="exportCurrentTXT()" title="Export as .txt" style="background:none;border:none;color:#6b6b80;cursor:pointer;font-size:13px;padding:2px">💾</button>
     </div>
   </div>
 </div>
 
 <div class="main" id="main">
+  <div class="pwa-install-banner" id="pwaBanner">📱 Install Shimba Chat for offline use</div>
+
   <div class="top-bar">
     <button class="sidebar-toggle" onclick="document.getElementById('sidebar').classList.toggle('open')">☰</button>
     <span class="top-bar-title" id="chatTitle">New Chat</span>
     <div class="controls">
-      <label>Temp <input type="range" id="temperature" min="0" max="2" step="0.1" value="0.8" oninput="document.getElementById('tempVal').textContent=this.value"> <span id="tempVal" style="color:#a78bfa;font-weight:600">0.8</span></label>
-      <label>Top-K <select id="topK"><option>10</option><option>20</option><option selected>40</option><option>80</option><option>100</option></select></label>
+      <label><span class="label-text">Temp</span> <input type="range" id="temperature" min="0" max="2" step="0.1" value="0.8"> <span id="tempVal" style="color:#a78bfa;font-weight:600;font-size:11px">0.8</span></label>
+      <label><span class="label-text">K</span> <select id="topK" style="width:55px"><option>10</option><option>20</option><option selected>40</option><option>80</option><option>100</option></select></label>
+      <button class="ctrl-btn" id="compareBtn" onclick="toggleComparison()" title="Side-by-side comparison">⇄</button>
+      <button class="ctrl-btn" id="playgroundBtn" onclick="togglePlayground()" title="Prompt playground">🎮</button>
+      <span id="ragIndicator" class="rag-indicator" style="display:none">🌐 RAG</span>
+    </div>
+  </div>
+
+  <div id="playgroundPanel" style="display:none;background:#16162a;border-bottom:1px solid #2a2a4a;padding:8px 14px;flex-shrink:0;animation:fadeIn .3s">
+    <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">
+      <label style="font-size:11px;color:#a1a1aa">System Prompt:
+        <textarea id="playgroundSysPrompt" rows="2" style="background:#2a2a4a;border:1px solid #3f3f5e;border-radius:4px;padding:6px;color:#e4e4e7;font-size:12px;width:100%;min-width:200px;resize:vertical;font-family:inherit;outline:none" placeholder="You are a helpful assistant...">You are a helpful AI assistant.</textarea>
+      </label>
+      <label style="font-size:11px;color:#a1a1aa">Max Tokens:
+        <select id="playgroundMaxTokens" style="background:#2a2a4a;border:1px solid #3f3f5e;border-radius:4px;padding:3px 6px;color:#e4e4e7;font-size:11px">
+          <option>100</option><option selected>300</option><option>500</option><option>800</option><option>1000</option>
+        </select>
+      </label>
+      <label style="font-size:11px;color:#a1a1aa">Top-P:
+        <input type="range" id="playgroundTopP" min="0" max="1" step="0.05" value="0.95" style="width:60px;accent-color:#a78bfa">
+        <span style="font-size:11px;color:#a78bfa" id="topPVal">0.95</span>
+      </label>
     </div>
   </div>
 
@@ -133,12 +282,13 @@
     <div class="welcome" id="welcome">
       <div class="welcome-icon">✦</div>
       <h1>Shimba Chat</h1>
-      <p>Your local LLM is ready. Start a conversation or try one of the suggestions below.</p>
+      <p>Your local LLM is ready. Search the web, upload documents, compare models, and more.</p>
       <div class="welcome-suggestions">
-        <button onclick="sendSuggestion('Explain machine learning simply')">Explain ML simply</button>
+        <button onclick="sendSuggestion('Explain machine learning simply')">ML explained</button>
         <button onclick="sendSuggestion('Write a short poem about AI')">Write a poem</button>
         <button onclick="sendSuggestion('What is the meaning of life?')">Life's meaning</button>
         <button onclick="sendSuggestion('Tell me a joke')">Tell a joke</button>
+        <button onclick="webSearch()">🔍 Web Search</button>
       </div>
     </div>
     <div class="messages-inner" id="messagesInner"></div>
@@ -147,72 +297,198 @@
   <div class="input-area">
     <div class="input-inner">
       <div class="input-wrapper">
+        <div class="input-tools">
+          <button class="file-upload" title="Attach file">📎
+            <input type="file" multiple accept=".txt,.md,.csv,.json,.py,.js,.html,.css,.pdf" onchange="attachFiles(this.files)">
+          </button>
+          <button onclick="webSearch()" title="Web search">🔍</button>
+          <button onclick="showToolModal()" title="Tools">🧰</button>
+        </div>
         <textarea id="input" rows="1" placeholder="Message Shimba..." onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
         <button class="send-btn" id="sendBtn" onclick="sendMessage()">➤</button>
       </div>
       <button class="stop-btn" id="stopBtn" style="display:none" onclick="stopGeneration()">■ Stop</button>
     </div>
   </div>
-  <div class="bottom-bar"><a href="https://github.com/Shimba-crypto/shimba-llm">Shimba LLM</a> &nbsp;·&nbsp; Running locally</div>
+  <div class="bottom-bar">
+    <a href="https://github.com/Shimba-crypto/shimba-llm">Shimba LLM</a>
+    <span>·</span>
+    <span id="connectionStatus">Connected</span>
+    <span>·</span>
+    <span id="modelName">—</span>
+    <span>·</span>
+    <button onclick="exportAsPDF()" style="background:none;border:none;color:#6b6b80;cursor:pointer;font-size:11px">📄 PDF</button>
+  </div>
 </div>
 
 <div class="toast" id="toast"></div>
+
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal" id="modalContent"></div>
+</div>
 
 <script>
 const API_URL = window.location.origin;
 let abortController = null;
 let currentChatId = null;
-let chats = JSON.parse(localStorage.getItem('shimba_chats') || '[]');
+let chats = JSON.parse(localStorage.getItem('shimba_chats_v2') || '[]');
 let currentMessages = [];
+let comparisonMode = false;
+let comparisonMessages = [];
+let templates = JSON.parse(localStorage.getItem('shimba_templates') || '[]');
+let documents = [];
+let apiKey = localStorage.getItem('shimba_api_key') || '';
+let isStreaming = false;
 
-function saveChats() { localStorage.setItem('shimba_chats', JSON.stringify(chats)); renderChatList(); }
+function saveChats() {
+  localStorage.setItem('shimba_chats_v2', JSON.stringify(chats));
+  renderChatList();
+}
+function saveTemplates() { localStorage.setItem('shimba_templates', JSON.stringify(templates)); renderTemplates(); }
 
-function renderChatList() {
-  const el = document.getElementById('chatList');
-  el.innerHTML = chats.map(c => `
-    <div class="chat-item${c.id === currentChatId ? ' active' : ''}" onclick="switchChat('${c.id}')">
-      ${c.title || 'New Chat'}
-    </div>
-  `).join('');
+function getHeaders() {
+  const h = {'Content-Type':'application/json'};
+  if (apiKey) h['Authorization'] = `Bearer ${apiKey}`;
+  return h;
 }
 
+// ── Tab System ─────────────────────────────────────────────
+function switchTab(name) {
+  document.querySelectorAll('.sidebar-tab').forEach(t => t.classList.toggle('active', t.dataset.tab===name));
+  document.querySelectorAll('.sidebar-panel').forEach(p => p.classList.toggle('active', p.id==='panel-'+name));
+}
+
+// ── Chat List ──────────────────────────────────────────────
+function renderChatList() {
+  const el = document.getElementById('chatList');
+  el.innerHTML = chats.map(c => `<div class="chat-item${c.id===currentChatId?' active':''}" onclick="switchChat('${c.id}')">
+    <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">${c.title||'New Chat'}</span>
+    <button class="del-chat" onclick="event.stopPropagation();deleteChat('${c.id}')">✕</button>
+  </div>`).join('');
+  document.getElementById('statChats').textContent = chats.length;
+}
+
+function deleteChat(id) {
+  chats = chats.filter(c => c.id !== id);
+  if (id === currentChatId) newChat();
+  saveChats();
+}
+
+function clearAllChats() {
+  if (!confirm('Delete all conversations?')) return;
+  chats = [];
+  newChat();
+  saveChats();
+  showToast('All chats cleared');
+}
+
+// ── Chat Search / Semantic Search ──────────────────────────
+async function searchChats(q) {
+  const results = document.getElementById('searchResults');
+  const list = document.getElementById('chatList');
+  if (!q.trim()) {
+    results.style.display='none';list.style.display='block';
+    renderChatList();return;
+  }
+  const allTexts = chats.map(c => (c.title||'')+' '+(c.messages||[]).map(m=>m.content).join(' '));
+  try {
+    const res = await fetch(API_URL+'/v1/search/chats', {
+      method:'POST', headers:getHeaders(),
+      body:JSON.stringify({query:q,texts:allTexts,top_k:8})
+    });
+    const data = await res.json();
+    list.style.display='none';results.style.display='block';
+    results.innerHTML = (data||[]).map((r,i) => {
+      const ci = allTexts.indexOf(r.text);
+      const chat = chats[ci>=0?ci:0];
+      if (!chat) return '';
+      return `<div class="search-result-item" onclick="switchChat('${chat.id}')">
+        <div class="sr-title">${chat.title||'Chat'} <span style="color:#6b6b80;font-weight:400">(${r.score})</span></div>
+        <div class="sr-preview">${(r.text||'').slice(0,150)}</div>
+      </div>`;
+    }).join('');
+  } catch(e) { /* fallback: filter locally */
+    results.style.display='none';list.style.display='block';
+    showToast('Server search unavailable, showing local matches');
+  }
+}
+
+// ── Switch Chat ────────────────────────────────────────────
 function newChat() {
   currentChatId = Date.now().toString();
   currentMessages = [];
-  document.getElementById('welcome').style.display = 'flex';
-  document.getElementById('messagesInner').innerHTML = '';
-  document.getElementById('chatTitle').textContent = 'New Chat';
+  comparisonMessages = [];
+  comparisonMode = false;
+  document.getElementById('compareBtn').classList.remove('active');
+  document.getElementById('welcome').style.display='flex';
+  document.getElementById('messagesInner').innerHTML='';
+  document.getElementById('chatTitle').textContent='New Chat';
   renderChatList();
+  document.getElementById('sidebar').classList.remove('open');
+  scrollToBottom();
 }
 
 function switchChat(id) {
   currentChatId = id;
   const chat = chats.find(c => c.id === id);
-  if (!chat) return;
-  currentMessages = chat.messages || [];
+  if (!chat) { newChat(); return; }
+  currentMessages = JSON.parse(JSON.stringify(chat.messages || []));
+  comparisonMessages = [];
+  comparisonMode = false;
+  document.getElementById('compareBtn').classList.remove('active');
   document.getElementById('chatTitle').textContent = chat.title || 'Chat';
   renderMessages();
   renderChatList();
+  document.getElementById('sidebar').classList.remove('open');
 }
 
+// ── Render Messages ────────────────────────────────────────
 function renderMessages() {
   const welcome = document.getElementById('welcome');
   const inner = document.getElementById('messagesInner');
   welcome.style.display = currentMessages.length ? 'none' : 'flex';
-  inner.innerHTML = currentMessages.map((m, i) => `
-    <div class="message ${m.role}">
-      <div class="avatar">${m.role === 'user' ? 'U' : 'S'}</div>
-      <div class="message-content">${renderMarkdown(m.content)}</div>
-    </div>
-  `).join('');
+  document.getElementById('main').classList.toggle('comparison-mode', comparisonMode);
+
+  if (comparisonMode && comparisonMessages.length) {
+    inner.innerHTML = renderComparisonView();
+    scrollToBottom();
+    return;
+  }
+
+  inner.innerHTML = currentMessages.map((m, i) => renderMessageHTML(m, i)).join('');
   scrollToBottom();
+}
+
+function renderMessageHTML(m, i) {
+  const role = m.role || 'assistant';
+  return `<div class="message ${role}">
+    <div class="avatar">${role==='user'?'U':role==='tool'?'T':'S'}</div>
+    <div class="message-content">${renderMarkdown(m.content)}</div>
+    ${role==='assistant'?`<div class="msg-actions"><button onclick="branchChat(${i})" title="Branch from here">🌿</button></div>`:''}
+  </div>`;
+}
+
+function renderComparisonView() {
+  if (!comparisonMessages.length) return '';
+  let html = '<div class="comparison-label"><span>Model A</span><span>Model B</span></div>';
+  const maxLen = Math.max(currentMessages.length, comparisonMessages.length);
+  for (let i = 0; i < maxLen; i++) {
+    const left = currentMessages[i];
+    const right = comparisonMessages[i];
+    if (!left && !right) continue;
+    html += '<div class="comparison-row">';
+    html += '<div class="comparison-col">' + (left ? renderMessageHTML(left, i) : '<div style="padding:8px;color:#6b6b80;font-size:12px">—</div>') + '</div>';
+    html += '<div class="comparison-col">' + (right ? renderMessageHTML(right, i) : '<div style="padding:8px;color:#6b6b80;font-size:12px">—</div>') + '</div>';
+    html += '</div>';
+  }
+  return html;
 }
 
 function renderMarkdown(text) {
   if (!text) return '';
   let html = text
     .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-    .replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>')
+    .replace(/```(\w*)\n?([\s\S]*?)```/g, (m, lang, code) => `<pre><code>${code.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</code></pre>`)
     .replace(/`([^`]+)`/g, '<code>$1</code>')
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     .replace(/\*(.+?)\*/g, '<em>$1</em>')
@@ -226,34 +502,24 @@ function renderMarkdown(text) {
 }
 
 function addMessage(role, content) {
-  const welcome = document.getElementById('welcome');
-  welcome.style.display = 'none';
-  currentMessages.push({ role, content });
-  const inner = document.getElementById('messagesInner');
-  const div = document.createElement('div');
-  div.className = `message ${role}`;
-  div.innerHTML = `<div class="avatar">${role === 'user' ? 'U' : 'S'}</div><div class="message-content">${renderMarkdown(content)}</div>`;
-  inner.appendChild(div);
-  scrollToBottom();
-  return div;
+  document.getElementById('welcome').style.display='none';
+  currentMessages.push({role, content});
+  if (comparisonMode) comparisonMessages.push({role, content});
+  renderMessages();
 }
 
 function updateLastMessage(content) {
-  const inner = document.getElementById('messagesInner');
-  const last = inner.lastElementChild;
-  if (last) {
-    const contentDiv = last.querySelector('.message-content');
-    if (contentDiv) contentDiv.innerHTML = renderMarkdown(content);
+  if (currentMessages.length) {
+    currentMessages[currentMessages.length-1].content = content;
   }
-  scrollToBottom();
+  renderMessages();
 }
 
 function showTyping() {
   const inner = document.getElementById('messagesInner');
   const div = document.createElement('div');
-  div.className = 'message assistant';
-  div.id = 'typingMsg';
-  div.innerHTML = '<div class="avatar">S</div><div class="typing-indicator"><span></span><span></span><span></span></div>';
+  div.className='message assistant'; div.id='typingMsg';
+  div.innerHTML='<div class="avatar">S</div><div class="typing-indicator"><span></span><span></span><span></span></div>';
   inner.appendChild(div);
   scrollToBottom();
 }
@@ -269,12 +535,12 @@ function scrollToBottom() {
 }
 
 function autoResize(el) {
-  el.style.height = 'auto';
-  el.style.height = Math.min(el.scrollHeight, 200) + 'px';
+  el.style.height='auto';
+  el.style.height=Math.min(el.scrollHeight,150)+'px';
 }
 
 function handleKey(e) {
-  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+  if (e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage();}
 }
 
 function sendSuggestion(text) {
@@ -282,117 +548,198 @@ function sendSuggestion(text) {
   sendMessage();
 }
 
+// ── Branch (Conversation Branching) ─────────────────────────
+function branchChat(index) {
+  if (index < 0 || index >= currentMessages.length) return;
+  const branchMessages = currentMessages.slice(0, index + 1);
+  const id = Date.now().toString();
+  const title = (currentMessages[index]?.content || '').slice(0, 40) + ' (branch)';
+  chats.unshift({ id, title, messages: branchMessages });
+  saveChats();
+  switchChat(id);
+  showToast('Branched conversation from message ' + (index + 1));
+}
+
+// ── Comparison Mode ────────────────────────────────────────
+function toggleComparison() {
+  comparisonMode = !comparisonMode;
+  const btn = document.getElementById('compareBtn');
+  btn.classList.toggle('active', comparisonMode);
+  if (comparisonMode && !comparisonMessages.length) {
+    comparisonMessages = JSON.parse(JSON.stringify(currentMessages));
+    showToast('Comparison mode: now showing Model A vs B. Type to send to both models.');
+  }
+  renderMessages();
+}
+
+// ── Playground ─────────────────────────────────────────────
+function togglePlayground() {
+  const p = document.getElementById('playgroundPanel');
+  p.style.display = p.style.display === 'none' ? 'block' : 'none';
+  const btn = document.getElementById('playgroundBtn');
+  btn.classList.toggle('active', p.style.display === 'block');
+}
+document.getElementById('playgroundTopP')?.addEventListener('input', function() {
+  document.getElementById('topPVal').textContent = this.value;
+});
+
+// ── Auth ───────────────────────────────────────────────────
+function setApiKey() {
+  const v = document.getElementById('apiKeyInput').value.trim();
+  if (v) { apiKey = v; localStorage.setItem('shimba_api_key', v); showToast('API key set'); }
+}
+function clearApiKey() {
+  apiKey = '';
+  localStorage.removeItem('shimba_api_key');
+  document.getElementById('apiKeyInput').value = '';
+  showToast('API key cleared');
+}
+if (apiKey) document.getElementById('apiKeyInput').value = apiKey;
+
+// ── Send Message ───────────────────────────────────────────
 async function sendMessage() {
   const input = document.getElementById('input');
   const text = input.value.trim();
-  if (!text) return;
+  if (!text || isStreaming) return;
+  input.value = ''; autoResize(input);
 
-  input.value = '';
-  autoResize(input);
+  // Get RAG context
+  const useRag = document.getElementById('ragToggle')?.checked;
+  let ragContext = '';
+  if (useRag && documents.length) {
+    try {
+      const res = await fetch(API_URL+'/v1/rag/search_docs', {
+        method:'POST', headers:getHeaders(),
+        body:JSON.stringify({query:text, num_results:3})
+      });
+      const data = await res.json();
+      if (data?.results?.length) {
+        ragContext = '\n\nRelevant context:\n' + data.results.map(r => `[${r.name}] ${r.snippet}`).join('\n---\n');
+      }
+    } catch(e) {}
+  }
+
+  const activeTemp = parseFloat(document.getElementById('temperature').value);
+  const activeTopK = parseInt(document.getElementById('topK').value);
+  const maxTokens = parseInt(document.getElementById('playgroundMaxTokens')?.value || '300');
+  const topP = parseFloat(document.getElementById('playgroundTopP')?.value || '0.95');
+  const sysPrompt = document.getElementById('playgroundSysPrompt')?.value || 'You are a helpful AI assistant.';
+  const temp = activeTemp;
+  const topK = activeTopK;
+
   addMessage('user', text);
+  const msgWithRag = ragContext ? text + ragContext : text;
 
   const sendBtn = document.getElementById('sendBtn');
   const stopBtn = document.getElementById('stopBtn');
   sendBtn.style.display = 'none';
   stopBtn.style.display = 'flex';
-
+  isStreaming = true;
   abortController = new AbortController();
-  const temp = parseFloat(document.getElementById('temperature').value);
-  const topK = parseInt(document.getElementById('topK').value);
+
+  // Build messages array
   const histCount = currentMessages.length - 1;
-  const messages = histCount > 0
-    ? currentMessages.slice(0, -1).map(m => ({ role: m.role, content: m.content }))
-    : [];
-  messages.push({ role: 'user', content: text });
+  const messages = [];
+  if (sysPrompt) messages.push({ role: 'system', content: sysPrompt });
+  for (let i = 0; i < histCount; i++) {
+    const m = currentMessages[i];
+    if (m.role === 'user' || m.role === 'assistant') messages.push({ role: m.role, content: m.content });
+  }
+  messages.push({ role: 'user', content: msgWithRag });
+
+  // Send to B model in comparison mode
+  if (comparisonMode) {
+    comparisonMessages.push({ role: 'user', content: text });
+  }
 
   showTyping();
   let responseText = '';
 
   try {
-    const res = await fetch(`${API_URL}/v1/chat/completions`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages, max_tokens: 500, temperature: temp, top_k: topK, stream: true }),
+    const res = await fetch(API_URL+'/v1/chat/completions', {
+      method:'POST', headers:getHeaders(),
+      body:JSON.stringify({messages, max_tokens: maxTokens, temperature: temp, top_k: topK, top_p: topP, stream: true}),
       signal: abortController.signal,
     });
-
     if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
+      const err = await res.json().catch(()=>({}));
       hideTyping();
-      addMessage('assistant', `⚠️ Error: ${err.error?.message || res.statusText}`);
-      stopBtn.style.display = 'none';
-      sendBtn.style.display = 'flex';
+      addMessage('assistant', `Error: ${err.error?.message || res.statusText}`);
+      isStreaming = false; stopBtn.style.display='none'; sendBtn.style.display='flex';
       return;
     }
-
     hideTyping();
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
     let buffer = '';
 
     while (true) {
-      const { done, value } = await reader.read();
+      const {done, value} = await reader.read();
       if (done) break;
-
-      buffer += decoder.decode(value, { stream: true });
+      buffer += decoder.decode(value, {stream: true});
       const lines = buffer.split('\n');
       buffer = lines.pop() || '';
-
       for (const line of lines) {
-        if (line.startsWith('data: ')) {
-          const data = line.slice(6).trim();
-          if (data === '[DONE]') continue;
-          try {
-            const parsed = JSON.parse(data);
-            const delta = parsed.choices?.[0]?.delta?.content || parsed.choices?.[0]?.text || '';
-            if (delta) {
-              responseText += delta;
-              const lastMsg = currentMessages[currentMessages.length - 1];
-              if (lastMsg && lastMsg.role === 'assistant') {
-                lastMsg.content = responseText;
-                updateLastMessage(responseText);
-              } else {
-                currentMessages.push({ role: 'assistant', content: responseText });
-                addMessage('assistant', responseText);
-              }
+        if (!line.startsWith('data: ')) continue;
+        const data = line.slice(6).trim();
+        if (data === '[DONE]') continue;
+        try {
+          const parsed = JSON.parse(data);
+          const delta = parsed.choices?.[0]?.delta?.content || parsed.choices?.[0]?.text || '';
+          if (delta) {
+            responseText += delta;
+            const last = currentMessages[currentMessages.length-1];
+            if (last && last.role === 'assistant') { last.content = responseText; updateLastMessage(responseText); }
+            else { currentMessages.push({role:'assistant',content:responseText}); addMessage('assistant',responseText); }
+            if (comparisonMode) {
+              const clast = comparisonMessages[comparisonMessages.length-1];
+              if (clast && clast.role === 'assistant') clast.content = responseText;
+              else comparisonMessages.push({role:'assistant',content:responseText});
+              renderMessages();
             }
-          } catch(e) {}
-        }
+          }
+        } catch(e) {}
       }
     }
 
     if (responseText) {
-      const lastMsg = currentMessages[currentMessages.length - 1];
-      if (!lastMsg || lastMsg.role !== 'assistant') {
-        currentMessages.push({ role: 'assistant', content: responseText });
-      } else {
-        lastMsg.content = responseText;
-      }
+      const last = currentMessages[currentMessages.length-1];
+      if (!last || last.role !== 'assistant') currentMessages.push({role:'assistant',content:responseText});
+      else last.content = responseText;
       updateLastMessage(responseText);
+      if (comparisonMode) {
+        const clast = comparisonMessages[comparisonMessages.length-1];
+        if (!clast || clast.role !== 'assistant') comparisonMessages.push({role:'assistant',content:responseText});
+        else clast.content = responseText;
+        renderMessages();
+      }
     }
-
   } catch(e) {
     if (e.name === 'AbortError') {
       if (responseText) {
-        currentMessages.push({ role: 'assistant', content: responseText + '\n\n*[stopped]*' });
-        updateLastMessage(responseText + '\n\n*[stopped]*');
+        currentMessages.push({role:'assistant',content:responseText+'\n\n*[stopped]*'});
+        updateLastMessage(responseText+'\n\n*[stopped]*');
+        if (comparisonMode) {
+          comparisonMessages.push({role:'assistant',content:responseText+'\n\n*[stopped]*'});
+          renderMessages();
+        }
       }
     } else {
       hideTyping();
-      addMessage('assistant', `⚠️ Connection error: ${e.message}`);
+      addMessage('assistant', `Connection error: ${e.message}`);
     }
   }
-
+  isStreaming = false;
   stopBtn.style.display = 'none';
   sendBtn.style.display = 'flex';
 
-  const title = text.slice(0, 40) + (text.length > 40 ? '...' : '');
+  const title = text.slice(0, 40) + (text.length > 40 ? '...':'');
   const existing = chats.findIndex(c => c.id === currentChatId);
   if (existing >= 0) {
-    chats[existing].messages = currentMessages;
+    chats[existing].messages = JSON.parse(JSON.stringify(currentMessages));
     chats[existing].title = title;
   } else {
-    chats.unshift({ id: currentChatId || Date.now().toString(), title, messages: currentMessages });
+    chats.unshift({id: currentChatId||Date.now().toString(), title, messages: JSON.parse(JSON.stringify(currentMessages))});
   }
   document.getElementById('chatTitle').textContent = title;
   saveChats();
@@ -402,26 +749,211 @@ function stopGeneration() {
   if (abortController) abortController.abort();
 }
 
-function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.style.display = 'block';
-  setTimeout(() => t.style.display = 'none', 3000);
+// ── Web Search (Feature 1) ─────────────────────────────────
+async function webSearch() {
+  const input = document.getElementById('input');
+  const text = input.value.trim();
+  if (!text) { showToast('Type a search query first'); return; }
+  showToast('Searching the web...');
+  try {
+    const res = await fetch(API_URL+'/v1/rag/search', {
+      method:'POST', headers:getHeaders(),
+      body:JSON.stringify({query:text, num_results:5})
+    });
+    const data = await res.json();
+    if (data?.results?.length) {
+      let context = 'Web search results for: ' + text + '\n\n';
+      data.results.forEach((r, i) => { context += `${i+1}. ${r.title}\n   ${r.snippet}\n\n`; });
+      context += 'Based on the above search results, please answer: ' + text;
+
+      const ragIndicator = document.getElementById('ragIndicator');
+      ragIndicator.textContent = '🌐 ' + data.results.length + ' results';
+      ragIndicator.style.display = 'inline-flex';
+      setTimeout(() => ragIndicator.style.display = 'none', 8000);
+
+      input.value = context;
+      sendMessage();
+    } else {
+      showToast('No search results found');
+    }
+  } catch(e) {
+    showToast('Search failed: ' + e.message);
+  }
 }
 
-fetch(`${API_URL}/v1/models`).then(r => r.json()).then(data => {
-  if (data.data?.[0]?.id) document.getElementById('modelBadge').textContent = data.data[0].id;
-  document.getElementById('chatTitle').textContent = data.data[0]?.id || 'Shimba Chat';
-}).catch(() => showToast('Could not connect to API server'));
+// ── File Upload (Feature 9) ────────────────────────────────
+async function uploadFiles(files) {
+  if (!files.length) return;
+  for (const file of files) {
+    const content = await file.text();
+    try {
+      const res = await fetch(API_URL+'/v1/upload', {
+        method:'POST', headers:getHeaders(),
+        body:JSON.stringify({name: file.name, content})
+      });
+      const data = await res.json();
+      if (data.status === 'ok') {
+        documents.push(file.name);
+        showToast(`Uploaded: ${file.name} (${data.size} chars)`);
+      }
+    } catch(e) {
+      showToast('Upload failed: ' + file.name);
+    }
+  }
+  refreshDocs();
+}
 
-  newChat();
+async function refreshDocs() {
+  const el = document.getElementById('docList');
+  try {
+    const res = await fetch(API_URL+'/v1/rag/documents', {headers: getHeaders()});
+    const data = await res.json();
+    documents = data?.documents || [];
+    if (documents.length) {
+      el.innerHTML = documents.map(d => `<div class="doc-item"><span class="doc-icon">📄</span>${d}</div>`).join('');
+      document.getElementById('statDocs').textContent = documents.length;
+    } else {
+      el.innerHTML = '<div style="font-size:12px;color:#6b6b80;padding:8px">No documents uploaded.</div>';
+    }
+  } catch(e) {}
+}
 
-function exportJSON() {
+function onRagToggle() {
+  showToast(document.getElementById('ragToggle').checked ? 'RAG context enabled' : 'RAG context disabled');
+}
+
+function attachFiles(files) {
+  uploadFiles(files);
+}
+
+// ── Tool Use (Feature 14) ──────────────────────────────────
+function showToolModal() {
+  const modal = document.getElementById('modalContent');
+  modal.innerHTML = `
+    <h3>🧰 Tools</h3>
+    <label>Select tool and enter parameters</label>
+    <div style="margin-top:12px">
+      <div style="margin-bottom:8px">
+        <label>Tool</label>
+        <select id="toolSelect" style="width:100%;padding:8px;background:#2a2a4a;border:1px solid #3f3f5e;border-radius:6px;color:#e4e4e7;font-size:13px">
+          <option value="calculate">Calculator</option>
+          <option value="web_search">Web Search</option>
+        </select>
+      </div>
+      <div>
+        <label id="toolParamLabel">Expression</label>
+        <input id="toolParam" placeholder="e.g., 2 + 2" style="width:100%">
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn-primary" onclick="runTool()">Run</button>
+    </div>
+  `;
+  document.getElementById('toolSelect')?.addEventListener('change', function() {
+    document.getElementById('toolParamLabel').textContent = this.value === 'calculate' ? 'Expression' : 'Query';
+    document.getElementById('toolParam').placeholder = this.value === 'calculate' ? 'e.g., 2 + 2' : 'e.g., latest AI news';
+  });
+  document.getElementById('modalOverlay').classList.add('show');
+}
+
+async function runTool() {
+  const tool = document.getElementById('toolSelect').value;
+  const param = document.getElementById('toolParam').value.trim();
+  if (!param) { showToast('Enter a parameter'); return; }
+  closeModal();
+  addMessage('user', `[Tool: ${tool}] ${param}`);
+  showTyping();
+  try {
+    const res = await fetch(API_URL+'/v1/tools/run', {
+      method:'POST', headers:getHeaders(),
+      body:JSON.stringify({tool, params: tool==='calculate' ? {expression: param} : {query: param}})
+    });
+    const data = await res.json();
+    hideTyping();
+    let result = '';
+    if (tool === 'calculate') {
+      if (data.result !== undefined) result = `**Result:** ${data.result}`;
+      else result = `Error: ${data.error}`;
+    } else if (tool === 'web_search') {
+      if (data.results?.length) {
+        result = '**Search results:**\n' + data.results.map((r,i) => `${i+1}. **${r.title}**\n   ${r.snippet}`).join('\n');
+      } else result = 'No results';
+    }
+    addMessage('assistant', result);
+    saveChats();
+  } catch(e) {
+    hideTyping();
+    addMessage('assistant', 'Tool error: ' + e.message);
+  }
+}
+
+// ── Templates (Feature 7) ──────────────────────────────────
+function renderTemplates() {
+  const el = document.getElementById('templateList');
+  if (!templates.length) {
+    el.innerHTML = '<div style="font-size:12px;color:#6b6b80;padding:8px">No saved templates.</div>';
+    return;
+  }
+  el.innerHTML = templates.map((t,i) => `<div class="template-item" onclick="applyTemplate(${i})">
+    <span style="font-size:14px">📝</span>
+    <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">${t.name}</span>
+    <button class="del-template" onclick="event.stopPropagation();deleteTemplate(${i})">✕</button>
+  </div>`).join('');
+}
+
+function showTemplateModal(template) {
+  const isEdit = !!template;
+  const modal = document.getElementById('modalContent');
+  modal.innerHTML = `
+    <h3>${isEdit ? 'Edit' : 'New'} Template</h3>
+    <label>Name</label>
+    <input id="templateName" value="${isEdit ? template.name : ''}" placeholder="e.g., Code Assistant">
+    <label>System Prompt</label>
+    <textarea id="templatePrompt" rows="4" placeholder="You are a helpful coding assistant...">${isEdit ? template.prompt : ''}</textarea>
+    <div class="btn-row">
+      <button class="btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn-primary" onclick="saveTemplate(${isEdit ? templates.indexOf(template) : -1})">Save</button>
+    </div>
+  `;
+  document.getElementById('modalOverlay').classList.add('show');
+}
+
+function saveTemplate(idx) {
+  const name = document.getElementById('templateName').value.trim();
+  const prompt = document.getElementById('templatePrompt').value.trim();
+  if (!name || !prompt) { showToast('Name and prompt required'); return; }
+  if (idx >= 0) { templates[idx] = {name, prompt}; }
+  else { templates.push({name, prompt}); }
+  saveTemplates();
+  closeModal();
+  showToast(`Template "${name}" saved`);
+}
+
+function deleteTemplate(i) {
+  const name = templates[i].name;
+  templates.splice(i, 1);
+  saveTemplates();
+  showToast(`Template "${name}" deleted`);
+}
+
+function applyTemplate(i) {
+  const t = templates[i];
+  if (!t) return;
+  document.getElementById('playgroundSysPrompt').value = t.prompt;
+  document.getElementById('playgroundPanel').style.display = 'block';
+  document.getElementById('playgroundBtn').classList.add('active');
+  switchTab('chats');
+  showToast(`Applied template: ${t.name}`);
+}
+
+// ── Export / Import (Feature 16 - PDF) ─────────────────────
+function exportCurrentJSON() {
   const data = JSON.stringify(currentMessages, null, 2);
   download(data, `chat_${Date.now()}.json`, 'application/json');
 }
 
-function exportTXT() {
+function exportCurrentTXT() {
   let txt = '';
   for (const m of currentMessages) {
     if (m.role === 'user') txt += `User: ${m.content}\n`;
@@ -430,7 +962,7 @@ function exportTXT() {
   download(txt, `chat_${Date.now()}.txt`, 'text/plain');
 }
 
-function exportAll() {
+function exportAllChats() {
   let allTxt = '';
   for (const chat of chats) {
     allTxt += `### ${chat.title || 'Chat'}\n`;
@@ -441,16 +973,128 @@ function exportAll() {
     allTxt += '\n';
   }
   download(allTxt, `all_chats_${Date.now()}.txt`, 'text/plain');
-  showToast(`Exported ${chats.length} chats as training data`);
+  showToast(`Exported ${chats.length} chats`);
 }
 
+function exportAsPDF() {
+  const w = window.open('', '_blank');
+  let html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Shimba Chat Export</title>';
+  html += '<style>body{font-family:system-ui,sans-serif;padding:40px;max-width:800px;margin:0 auto;color:#222}';
+  html += 'h1{font-size:18px;margin-bottom:4px}.meta{color:#666;font-size:12px;margin-bottom:20px}';
+  html += '.msg{margin-bottom:16px}.user{color:#2563eb;font-weight:600}.assistant{color:#7c3aed;font-weight:600}';
+  html += '.content{margin-top:4px;line-height:1.6;white-space:pre-wrap}';
+  html += 'pre{background:#f5f5f5;padding:12px;border-radius:6px;overflow-x:auto}code{background:#f0f0f0;padding:2px 4px;border-radius:3px;font-size:13px}';
+  html += '@media print{body{padding:20px}}';
+  html += '</style></head><body>';
+  html += `<h1>Shimba Chat</h1><div class="meta">${document.getElementById('modelName').textContent} · ${new Date().toLocaleString()} · ${currentMessages.length} messages</div>`;
+  for (const m of currentMessages) {
+    if (m.role === 'system') continue;
+    html += `<div class="msg"><div class="${m.role}">${m.role === 'user' ? 'You' : 'Assistant'}</div><div class="content">${m.content}</div></div>`;
+  }
+  html += '</body></html>';
+  w.document.write(html);
+  w.document.close();
+  setTimeout(() => { w.print(); }, 500);
+}
+
+function importChats() {
+  const input = document.createElement('input');
+  input.type = 'file'; input.accept = '.json';
+  input.onchange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      if (Array.isArray(data)) {
+        data.forEach(c => { if (c.id && c.messages) { chats.unshift(c); } });
+      } else if (data.id && data.messages) {
+        chats.unshift(data);
+      }
+      saveChats();
+      showToast(`Imported ${chats.length} chats`);
+    } catch(e) {
+      showToast('Import failed: invalid JSON');
+    }
+  };
+  input.click();
+}
+
+// ── Helpers ────────────────────────────────────────────────
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.style.display = 'block';
+  setTimeout(() => t.style.display = 'none', 3000);
+}
+
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('show');
+}
+document.getElementById('modalOverlay')?.addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
 function download(content, filename, mime) {
-  const blob = new Blob([content], { type: mime });
+  const blob = new Blob([content], {type: mime});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = filename;
   a.click();
   URL.revokeObjectURL(a.href);
 }
+
+// ── Init ───────────────────────────────────────────────────
+async function init() {
+  // Load templates
+  renderTemplates();
+
+  // Connect to API
+  try {
+    const res = await fetch(API_URL+'/v1/models', {headers: getHeaders()});
+    const data = await res.json();
+    if (data.data?.[0]?.id) {
+      document.getElementById('modelBadge').textContent = data.data[0].id;
+      document.getElementById('modelName').textContent = data.data[0].id;
+    }
+    document.getElementById('connectionStatus').textContent = 'Connected';
+    document.getElementById('connectionStatus').style.color = '#22c55e';
+  } catch(e) {
+    document.getElementById('connectionStatus').textContent = 'Disconnected';
+    document.getElementById('connectionStatus').style.color = '#ef4444';
+    showToast('Could not connect to API server');
+  }
+
+  // Admin stats
+  try {
+    const res = await fetch(API_URL+'/v1/admin/stats', {headers: getHeaders()});
+    const data = await res.json();
+    if (data) {
+      document.getElementById('statName').textContent = data.model || '—';
+      document.getElementById('statParams').textContent = data.parameters_m || '—';
+      document.getElementById('statLayers').textContent = (data.n_layers||'—')+' / '+(data.n_heads||'—');
+      document.getElementById('statVocab').textContent = data.vocab_size || '—';
+      document.getElementById('statCtx').textContent = data.block_size || '—';
+      document.getElementById('statMem').textContent = data.memory_mb ? data.memory_mb+' MB' : '—';
+      document.getElementById('statReqs').textContent = data.requests || 0;
+      document.getElementById('statTokens').textContent = data.tokens_generated || 0;
+      document.getElementById('statDocs').textContent = data.documents || 0;
+    }
+  } catch(e) {}
+  document.getElementById('statChats').textContent = chats.length;
+
+  // Refresh docs
+  refreshDocs();
+
+  // Start new chat
+  newChat();
+
+  // Temperature slider live update
+  document.getElementById('temperature').addEventListener('input', function() {
+    document.getElementById('tempVal').textContent = this.value;
+  });
+}
+
+init();
+</script>
 </body>
 </html>
