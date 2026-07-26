@@ -302,6 +302,7 @@
             <input type="file" multiple accept=".txt,.md,.csv,.json,.py,.js,.html,.css,.pdf" onchange="attachFiles(this.files)">
           </button>
           <button onclick="webSearch()" title="Web search">🔍</button>
+          <button onclick="runPythonTool()" title="Run Python">🐍</button>
           <button onclick="showToolModal()" title="Tools">🧰</button>
         </div>
         <textarea id="input" rows="1" placeholder="Message Shimba..." onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
@@ -827,7 +828,7 @@ function attachFiles(files) {
 }
 
 // ── Tool Use (Feature 14) ──────────────────────────────────
-function showToolModal() {
+function showToolModal(defaultTool) {
   const modal = document.getElementById('modalContent');
   modal.innerHTML = `
     <h3>🧰 Tools</h3>
@@ -838,11 +839,12 @@ function showToolModal() {
         <select id="toolSelect" style="width:100%;padding:8px;background:#2a2a4a;border:1px solid #3f3f5e;border-radius:6px;color:#e4e4e7;font-size:13px">
           <option value="calculate">Calculator</option>
           <option value="web_search">Web Search</option>
+          <option value="python">Python (run code)</option>
         </select>
       </div>
       <div>
         <label id="toolParamLabel">Expression</label>
-        <input id="toolParam" placeholder="e.g., 2 + 2" style="width:100%">
+        <textarea id="toolParam" rows="4" placeholder="e.g., 2 + 2" style="width:100%;background:#2a2a4a;border:1px solid #3f3f5e;border-radius:6px;padding:8px;color:#e4e4e7;font-size:13px;font-family:monospace;resize:vertical;outline:none"></textarea>
       </div>
     </div>
     <div class="btn-row">
@@ -850,11 +852,30 @@ function showToolModal() {
       <button class="btn-primary" onclick="runTool()">Run</button>
     </div>
   `;
-  document.getElementById('toolSelect')?.addEventListener('change', function() {
-    document.getElementById('toolParamLabel').textContent = this.value === 'calculate' ? 'Expression' : 'Query';
-    document.getElementById('toolParam').placeholder = this.value === 'calculate' ? 'e.g., 2 + 2' : 'e.g., latest AI news';
-  });
+  const sel = document.getElementById('toolSelect');
+  sel.addEventListener('change', updateToolParamUI);
+  if (defaultTool) { sel.value = defaultTool; }
+  updateToolParamUI();
   document.getElementById('modalOverlay').classList.add('show');
+}
+
+function updateToolParamUI() {
+  const v = document.getElementById('toolSelect').value;
+  const label = document.getElementById('toolParamLabel');
+  const input = document.getElementById('toolParam');
+  if (v === 'calculate') {
+    label.textContent = 'Expression';
+    input.placeholder = 'e.g., 2 + 2';
+    input.rows = 1;
+  } else if (v === 'web_search') {
+    label.textContent = 'Query';
+    input.placeholder = 'e.g., latest AI news';
+    input.rows = 1;
+  } else if (v === 'python') {
+    label.textContent = 'Python code';
+    input.placeholder = 'print("hello world")\n# or any Python code';
+    input.rows = 6;
+  }
 }
 
 async function runTool() {
@@ -862,12 +883,16 @@ async function runTool() {
   const param = document.getElementById('toolParam').value.trim();
   if (!param) { showToast('Enter a parameter'); return; }
   closeModal();
-  addMessage('user', `[Tool: ${tool}] ${param}`);
+  addMessage('user', `[Tool: ${tool}] ${param.slice(0,200)}`);
   showTyping();
   try {
+    const params = {};
+    if (tool === 'calculate') params.expression = param;
+    else if (tool === 'web_search') params.query = param;
+    else if (tool === 'python') params.code = param;
     const res = await fetch(API_URL+'/v1/tools/run', {
       method:'POST', headers:getHeaders(),
-      body:JSON.stringify({tool, params: tool==='calculate' ? {expression: param} : {query: param}})
+      body:JSON.stringify({tool, params})
     });
     const data = await res.json();
     hideTyping();
@@ -879,12 +904,45 @@ async function runTool() {
       if (data.results?.length) {
         result = '**Search results:**\n' + data.results.map((r,i) => `${i+1}. **${r.title}**\n   ${r.snippet}`).join('\n');
       } else result = 'No results';
+    } else if (tool === 'python') {
+      if (data.stdout) result += '```\n' + data.stdout + '\n```\n';
+      if (data.stderr) result += '**stderr:**\n```\n' + data.stderr + '\n```\n';
+      if (!result) result = data.error ? `Error: ${data.error}` : '(no output)';
+      if (data.exit_code !== undefined && data.exit_code !== 0 && !data.stderr) {
+        result += `\n*exit code: ${data.exit_code}*`;
+      }
     }
     addMessage('assistant', result);
     saveChats();
   } catch(e) {
     hideTyping();
     addMessage('assistant', 'Tool error: ' + e.message);
+  }
+}
+
+async function runPythonTool() {
+  const input = document.getElementById('input');
+  const code = input.value.trim();
+  if (!code) { showToast('Type Python code in the input or open the tool modal'); showToolModal('python'); return; }
+  input.value = ''; autoResize(input);
+  addMessage('user', `🐍 Python:\n\`\`\`python\n${code}\n\`\`\``);
+  showTyping();
+  try {
+    const res = await fetch(API_URL+'/v1/tools/run', {
+      method:'POST', headers:getHeaders(),
+      body:JSON.stringify({tool:'python', params:{code}})
+    });
+    const data = await res.json();
+    hideTyping();
+    let result = '';
+    if (data.stdout) result += '```\n' + data.stdout + '\n```\n';
+    if (data.stderr) result += '**stderr:**\n```\n' + data.stderr + '\n```\n';
+    if (!result) result = data.error ? `Error: ${data.error}` : '(no output)';
+    addMessage('assistant', result);
+    saveChats();
+  } catch(e) {
+    hideTyping();
+    addMessage('assistant', 'Error: ' + e.message);
   }
 }
 

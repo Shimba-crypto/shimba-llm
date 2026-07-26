@@ -617,6 +617,38 @@ class ShimbaAPI:
         except Exception as e:
             return {"expression": expr, "error": str(e)}
 
+    # ── Tools: Python Execution ─────────────────────────────
+    def tool_python(self, code: str, timeout_sec=10):
+        import subprocess, tempfile, textwrap
+        if not code.strip():
+            return {"error": "no code provided"}
+        # Dedent and write to temp file
+        dedented = textwrap.dedent(code)
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
+            f.write(dedented)
+            fname = f.name
+        try:
+            r = subprocess.run(
+                [sys.executable, fname],
+                capture_output=True, text=True, timeout=timeout_sec,
+                env={**os.environ, "PYTHONIOENCODING": "utf-8"},
+            )
+            out, err = r.stdout.strip(), r.stderr.strip()
+            result = {}
+            if out: result["stdout"] = out[:5000]
+            if err: result["stderr"] = err[:2000]
+            result["exit_code"] = r.returncode
+            if r.returncode != 0 and not err:
+                result["stderr"] = f"exit code {r.returncode}"
+            return result
+        except subprocess.TimeoutExpired:
+            return {"error": f"execution timed out after {timeout_sec}s", "stdout": "", "stderr": ""}
+        except Exception as e:
+            return {"error": str(e)}
+        finally:
+            try: os.unlink(fname)
+            except: pass
+
     # ── Tool router ──────────────────────────────────────────
     def run_tool(self, name: str, **kwargs):
         if name == "calculate":
@@ -625,6 +657,8 @@ class ShimbaAPI:
             return self.rag_search(kwargs.get("query", ""))
         elif name == "doc_search":
             return self.rag_docs(kwargs.get("query", ""))
+        elif name == "python":
+            return self.tool_python(kwargs.get("code", ""), kwargs.get("timeout", 10))
         return {"error": f"unknown tool: {name}"}
 
     # ── Admin Stats ──────────────────────────────────────────
