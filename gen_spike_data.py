@@ -25,6 +25,43 @@ import re
 USER_CAP = 200
 RESP_CAP = 500
 
+# Every self-identification in the pool corpora (Bomenater, omni fast, flafi)
+# is rewritten to Spike. Spike is the model; the rest are other people's names.
+NAME_PAT = re.compile(r"bomenater(?:\s+ai)?|omni\s*fast(?:\s+ai)?|flafi",
+                      flags=re.IGNORECASE)
+
+
+def spike_name(m: re.Match) -> str:
+    return "spike" if m.group(0).islower() else "Spike"
+
+
+def normalize_response(resp: str) -> str:
+    resp = NAME_PAT.sub(spike_name, resp)
+    # "call me Spike, or just Spike" -> "call me Spike" (after substitution)
+    resp = re.sub(r"\bspike, or just spike\b", "Spike",
+                  resp, flags=re.IGNORECASE)
+    resp = re.sub(r"^i am an ai\.?$", "I am Spike.",
+                  resp.strip(), flags=re.IGNORECASE)
+    return resp
+
+
+NAME_Q = ("your name", "who are you", "who r u", "what are you",
+          "introduce yourself", "what should i call you", "alias")
+MAKER_Q = ("who made you", "who created you", "who built you",
+           "who trained you", "who trained")
+
+
+def canonical(user: str):
+    """(thinking, response) for identity/maker questions, else None."""
+    q = norm(user).lower()
+    if any(k in q for k in MAKER_Q):
+        return ("they ask who made me. shimba trained me. say that.",
+                "Shimba trained me. I am Spike.")
+    if any(k in q for k in NAME_Q):
+        return ("they ask who i am. that is identity. answer with my name.",
+                "I am Spike, a small AI trained by Shimba.")
+    return None
+
 # chat files sharing the "User:\nResponse:" block shape
 STANDARD = [
     "mega.txt",
@@ -93,21 +130,33 @@ def main() -> None:
     turns = []  # (rendered_block, has_thinking)
     n_stamp = n_flafi = n_drop = 0
 
-    def add(user, think, resp):
+    def add(user, think, resp, verbatim=False):
         nonlocal n_stamp, n_drop
-        user, resp = norm(user), norm(resp)
+        user = NAME_PAT.sub(spike_name, norm(user))
+        resp = normalize_response(norm(resp))
         if not user or not resp:
             n_drop += 1
             return
         if len(user) > USER_CAP or len(resp) > RESP_CAP:
             n_drop += 1
             return
+        is_stamp = False
+        if verbatim:
+            think = normalize_response(norm(think)) if think else stamp(user, resp)
+        else:
+            hit = canonical(user)
+            if hit is not None:
+                think, resp = hit
+            elif think is None:
+                think = stamp(user, resp)
+                is_stamp = True
+            else:
+                think = norm(think)
         key = (user, resp)
         if key in seen:
             return
         seen.add(key)
-        if think is None:
-            think = stamp(user, resp)
+        if is_stamp:
             n_stamp += 1
         turns.append(
             (f"User: {user}\nThinking: {norm(think)}\nResponse: {resp}",
@@ -140,16 +189,9 @@ def main() -> None:
             text = f.read()
         n0 = len(turns)
         for u, t, r in parse_standard(text):
-            u2, r2 = norm(u), norm(r)
-            if not u2 or not r2 or (u2, r2) in seen:
-                continue
-            seen.add((u2, r2))
-            if t is None:  # shouldn't happen; stamp rather than drop
-                t = stamp(u2, r2)
-                n_stamp += 1
-            else:
+            if t is not None:
                 n_flafi += 1
-            turns.append((f"User: {u2}\nThinking: {norm(t)}\nResponse: {r2}", True))
+            add(u, t, r, verbatim=True)
         del text
         print(f"[pool] {FLAFI_VERBATIM}: +{len(turns) - n0} turns ({n_flafi} real-thinking)")
 
