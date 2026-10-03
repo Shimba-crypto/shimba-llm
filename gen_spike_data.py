@@ -74,6 +74,7 @@ STANDARD = [
     "deepslop_combined.txt",
     "deepslop_v2.txt",
     "flafi-anonomuse.txt",
+    "spike-extra.txt",   # 1k computed math + 1k logic, real thinking kept
 ]
 
 CHATMODEL = "ChatModelDataset.txt"   # "User :" / "Assistant :" + multi-paragraph
